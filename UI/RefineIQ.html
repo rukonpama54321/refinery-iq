@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>NRL AI Workshop — Refinery Operations Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    /* surfaces */
+    --bg:        #070B16;
+    --bg-1:      #0A0F1E;
+    --bg-2:      #0E1426;
+    --bg-3:      #121A30;
+    --glass:     rgba(255,255,255,0.025);
+    --glass-2:   rgba(255,255,255,0.045);
+    --border:    rgba(255,255,255,0.075);
+    --border-2:  rgba(255,255,255,0.13);
+    --border-glow: rgba(139,92,246,0.35);
+
+    /* text */
+    --text:      #EAEEF9;
+    --text-dim:  #98A3BE;
+    --text-faint:#586079;
+
+    /* ai accent */
+    --a1: #6366F1;
+    --a2: #8B5CF6;
+    --a3: #A78BFA;
+    --accent-grad: linear-gradient(120deg, #6366F1 0%, #8B5CF6 60%, #A78BFA 100%);
+
+    /* roles + status */
+    --violet: #8B5CF6;
+    --blue:   #3B82F6;
+    --gray:   #6B7280;
+    --green:  #34D399;
+    --amber:  #FBBF24;
+    --red:    #F87171;
+
+    /* glimmer intensity 0..1 — overridden by tweak */
+    --glimmer: 0.6;
+
+    --r-sm: 8px;
+    --r-md: 12px;
+    --r-lg: 18px;
+    --r-xl: 24px;
+
+    --ease: cubic-bezier(0.4, 0, 0.2, 1);
+    --dur: 200ms;
+
+    --sidebar-w: 280px;
+    --rail-w: 60px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: 'Geist', 'Inter', -apple-system, system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    overflow: hidden;
+    font-feature-settings: "cv11", "ss01";
+  }
+  #root { height: 100vh; }
+  .mono { font-family: 'Geist Mono', ui-monospace, monospace; }
+
+  ::selection { background: rgba(139,92,246,0.32); color: #fff; }
+
+  /* scrollbars */
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.08);
+    border-radius: 99px;
+    border: 3px solid transparent;
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.16); background-clip: padding-box; }
+
+  button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+  input, textarea { font-family: inherit; }
+  input:focus, textarea:focus, button:focus { outline: none; }
+
+  /* ---- glass cards ---- */
+  .glass {
+    background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.012));
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    backdrop-filter: blur(12px);
+  }
+
+  /* ---- AI glimmer: animated gradient sheen for streaming cards ---- */
+  @keyframes shimmer-sweep {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+  @keyframes glow-pulse {
+    0%,100% { opacity: calc(0.35 * var(--glimmer)); }
+    50%     { opacity: calc(0.9 * var(--glimmer)); }
+  }
+  @keyframes aurora-drift {
+    0%   { transform: translate(0,0) rotate(0deg) scale(1); }
+    33%  { transform: translate(6%, -4%) rotate(40deg) scale(1.15); }
+    66%  { transform: translate(-5%, 5%) rotate(-30deg) scale(1.05); }
+    100% { transform: translate(0,0) rotate(0deg) scale(1); }
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0;} }
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes pop {
+    from { opacity: 0; transform: scale(0.96); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+
+  /* the streaming AI card border-sheen */
+  .ai-streaming {
+    position: relative;
+  }
+  .ai-streaming::before {
+    content: "";
+    position: absolute; inset: -1px;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(110deg,
+      transparent 20%,
+      rgba(99,102,241, calc(0.9 * var(--glimmer))) 40%,
+      rgba(167,139,250, calc(1 * var(--glimmer))) 50%,
+      rgba(99,102,241, calc(0.9 * var(--glimmer))) 60%,
+      transparent 80%);
+    background-size: 200% 100%;
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    animation: shimmer-sweep 1.6s linear infinite;
+    pointer-events: none;
+  }
+  /* inner glow film while streaming */
+  .ai-streaming::after {
+    content: "";
+    position: absolute; inset: 0;
+    border-radius: inherit;
+    background: radial-gradient(120% 80% at 0% 0%, rgba(139,92,246, calc(0.10 * var(--glimmer))), transparent 60%);
+    pointer-events: none;
+  }
+
+  /* skeleton shimmer loader */
+  .skel {
+    background: linear-gradient(90deg,
+      rgba(255,255,255,0.04) 25%,
+      rgba(139,92,246, calc(0.18 * var(--glimmer))) 45%,
+      rgba(99,102,241, calc(0.22 * var(--glimmer))) 50%,
+      rgba(139,92,246, calc(0.18 * var(--glimmer))) 55%,
+      rgba(255,255,255,0.04) 75%);
+    background-size: 200% 100%;
+    animation: shimmer-sweep 1.4s linear infinite;
+    border-radius: 6px;
+  }
+
+  /* input active glow */
+  .input-glow {
+    transition: box-shadow var(--dur) var(--ease), border-color var(--dur) var(--ease);
+  }
+  .input-glow.active {
+    border-color: var(--border-glow);
+    box-shadow: 0 0 0 1px rgba(139,92,246,0.25),
+                0 0 28px calc(28px * var(--glimmer)) rgba(99,102,241, calc(0.22 * var(--glimmer)));
+  }
+
+  .shimmer-text {
+    background: linear-gradient(90deg, var(--text-faint) 30%, var(--a3) 50%, var(--text-faint) 70%);
+    background-size: 200% 100%;
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    animation: shimmer-sweep 2s linear infinite;
+  }
+  .fade-rise { animation: rise 0.4s var(--ease) both; }
+  .pop-in { animation: pop 0.22s var(--ease) both; }
+
+  /* generic hover lift */
+  .lift { transition: transform var(--dur) var(--ease), background var(--dur) var(--ease), border-color var(--dur) var(--ease); }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
+  }
+</style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="refineiq/icons.jsx"></script>
+  <script type="text/babel" src="refineiq/data.jsx"></script>
+  <script type="text/babel" src="refineiq/ui.jsx"></script>
+  <script type="text/babel" src="tweaks-panel.jsx"></script>
+  <script type="text/babel" src="refineiq/screen_login.jsx"></script>
+  <script type="text/babel" src="refineiq/screen_chat.jsx"></script>
+  <script type="text/babel" src="refineiq/screen_dashboard.jsx"></script>
+  <script type="text/babel" src="refineiq/screen_admin.jsx"></script>
+  <script type="text/babel" src="refineiq/app.jsx"></script>
+</body>
+</html>
