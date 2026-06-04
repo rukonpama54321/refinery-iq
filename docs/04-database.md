@@ -36,7 +36,7 @@ create type sensitivity_t as enum ('public','internal','confidential');   -- fin
 create type doc_status_t  as enum ('queued','processing','indexed','failed');
 create type msg_role_t    as enum ('user','assistant','system','tool');
 create type bug_status_t  as enum ('new','triaged','in_progress','closed');
-create type model_t       as enum ('anthropic','groq','gemini');   -- gemini = embeddings/OCR; no local LLM
+create type model_t       as enum ('groq','gemini');   -- chat: groq/gemini; gemini also embeddings/OCR (ADR-0004)
 ```
 
 ---
@@ -145,7 +145,7 @@ create table messages (
   content         text not null,
   agent           text,                          -- which specialist agent
   model           model_t,                       -- which model answered
-  routing_reason  text,                          -- e.g. 'confidential -> redacted, anthropic-only'
+  routing_reason  text,                          -- e.g. 'confidential -> redacted, single-provider'
   cache_hit       boolean,
   sentiment       numeric(4,3),                  -- optional, -1..1
   created_at      timestamptz not null default now()
@@ -316,7 +316,7 @@ Per Architecture §11: distinct Supabase **projects** (own Postgres + Storage + 
 
 - 6 `departments`, one seeded `admin` user, a handful of users per role.
 - Synthetic corpus loaded via an ingestion seeding script (parse → OCR → embed → index), producing `documents` + `document_versions` + ES `chunks`.
-- Baseline `policy_rules` (e.g., `confidential → anthropic-only`, `redact email/phone before any API call`) — refined once company **LLM policy rules** arrive (`llm-governance.md`).
+- Baseline `policy_rules` (e.g., `confidential → single-provider`, `redact email/phone before any API call`) — refined once company **LLM policy rules** arrive (`llm-governance.md`).
 
 ---
 

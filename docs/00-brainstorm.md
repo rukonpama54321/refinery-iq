@@ -10,7 +10,7 @@ This is the founding document. It frames *why* the project exists, *who* it serv
 
 **RefineryIQ** is an AI-first, role-aware enterprise assistant for an oil refinery. It is a single, chat-led front door to the things a refinery's people deal with every day: operating procedures, engineering documents, maintenance and safety records, HR policies, and operational data — answered in natural language, **with citations back to the source**, and **scoped to what each person is allowed to see**.
 
-It is built as a **tech-capability demo**: a believable product whose surface is simple (a chat box and a few dashboards) but whose internals deliberately exercise a broad, modern AI-platform stack — multi-agent orchestration, RAG, hybrid search, OCR, a multi-LLM harness across hosted APIs (Claude, Groq), token accounting, caching, RBAC, file versioning, PII handling, sentiment analysis, audit logging, and full CI/CD across environments.
+It is built as a **tech-capability demo**: a believable product whose surface is simple (a chat box and a few dashboards) but whose internals deliberately exercise a broad, modern AI-platform stack — multi-agent orchestration, RAG, hybrid search, OCR, a multi-LLM harness across hosted APIs (Groq, Gemini), token accounting, caching, RBAC, file versioning, PII handling, sentiment analysis, audit logging, and full CI/CD across environments.
 
 ### The problem it dramatizes
 Refinery knowledge is scattered across PDFs, scanned forms, spreadsheets, intranet pages, and people's heads. Finding "the current revision of the SOP for restarting Unit 200" or "who approved last month's hot-work permit" means hunting through shared drives. Answers must be **trustworthy** (cited, current), **safe** (sensitive data is redacted and tightly routed before any API call), and **need-to-know** (an operator and an HR manager see different things). RefineryIQ shows how an AI platform can deliver that responsibly.
@@ -18,8 +18,8 @@ Refinery knowledge is scattered across PDFs, scanned forms, spreadsheets, intran
 ### Guiding principles
 - **AI-first, minimal UX.** The primary interface is conversation; dashboards and admin are supporting surfaces. Subtle "glimmer" affordances signal where AI is working — used only where they add clarity, never decoration.
 - **Trust by construction.** Every substantive answer carries citations. No-source means no confident claim.
-- **Right data, right place.** Sensitive/confidential content is redacted before egress and restricted to the **primary trusted provider** (Anthropic), never the secondary (Groq). Policy decides routing.
-- **Free / open-source first.** The demo runs on free tiers and OSS. Hosted LLM usage is limited to provided Anthropic credits and Groq's free tier; Gemini's free tier handles OCR **and embeddings**.
+- **Right data, right place.** Sensitive/confidential content is redacted before egress and restricted to a **single designated provider** with no cross-provider fallback. Policy decides routing.
+- **Free / open-source first.** The demo runs entirely on free tiers and OSS. Chat uses Groq's and Gemini's free tiers (no paid API — a Claude Pro subscription is *not* API access); Gemini's free tier also handles OCR **and embeddings**.
 - **Single-tenant, multi-department.** One organization; access is partitioned by department and role.
 
 ---
@@ -75,8 +75,8 @@ How each required capability shows up as something demonstrable.
 | 2 | **Multi-agent architecture** | Orchestrator + 5 specialist agents (§4) |
 | 3 | **Indexing & search** | Elasticsearch hybrid: BM25 keyword + dense-vector kNN |
 | 4 | **OCR** | Gemini vision over scanned forms/permits/P&IDs during ingestion |
-| 5 | ~~**Local LLM**~~ | **Descoped** — dropped to avoid slow CPU-only inference; replaced by hosted Claude + Groq (see Decision log) |
-| 6 | **3rd-party LLM APIs** | Anthropic (Claude) + Groq (chat); Gemini (embeddings + OCR) |
+| 5 | ~~**Local LLM**~~ | **Descoped** — dropped to avoid slow CPU-only inference; replaced by hosted Groq + Gemini (see Decision log) |
+| 6 | **3rd-party LLM APIs** | Groq (Llama 3.3 70B, chat) + Gemini (chat alt, embeddings, OCR) |
 | 7 | **Multi-LLM harness** | Vercel AI SDK — one interface, provider routing & fallback |
 | 8 | **Token utilization** | Per-request/user/department token & cost metering, shown on dashboard |
 | 9 | **RAG** | Core answer path; retrieval feeds every substantive response |
@@ -105,7 +105,7 @@ How each required capability shows up as something demonstrable.
 **In scope**
 - Email auth (Supabase + Resend magic-link/OTP), single-tenant.
 - RBAC across the 3 tiers and 6 departments in §2.
-- Chat with streaming, citations, and visible model routing (Claude vs Groq, by sensitivity/cost).
+- Chat with streaming, citations, and visible model routing (Groq vs Gemini, by sensitivity/cost).
 - Document upload (chat + admin), ingestion (parse → OCR → PII scan → embed → index), and **version history**.
 - Hybrid search (Elasticsearch) powering the RAG/Document agent + at least one other specialist agent end-to-end (Safety or Operations).
 - Dashboard: token/cost usage + ingestion status + sentiment trend.
@@ -136,7 +136,7 @@ How each required capability shows up as something demonstrable.
 |---|---|
 | App stack | Next.js (App Router) + Node.js |
 | LLM harness | Vercel AI SDK |
-| Chat LLMs | Anthropic (Claude) primary + Groq (fast/cheap + fallback) — **no local LLM** |
+| Chat LLMs | Groq (Llama 3.3 70B) primary + Gemini (alternate) — **no local LLM, no Anthropic** (ADR-0004) |
 | Embeddings / OCR | Gemini `text-embedding-004` (768-dim) / Gemini vision |
 | System-of-record | Supabase (Postgres + Auth + Storage) |
 | Search / vectors | Elasticsearch (hybrid BM25 + kNN) — *fallback noted below* |
@@ -157,7 +157,7 @@ How each required capability shows up as something demonstrable.
 1. ~~**Demo data**~~ — ✅ resolved: synthetic corpus (see PRD §8).
 2. ~~**Company LLM policy rules**~~ — ✅ resolved: provided via the HR manual + HCU manual; captured (abstracted) in [`docs/llm-governance.md`](llm-governance.md) per ADR-0003.
 3. **Timeline** — no fixed date assumed; pacing by SDLC phases.
-4. ~~**4th LLM slot**~~ — ✅ resolved: Claude + Groq (chat), Gemini (embeddings/OCR); **local LLM dropped**.
+4. ~~**4th LLM slot**~~ — ✅ resolved (ADR-0004): Groq + Gemini (chat); Gemini (embeddings/OCR); **no local LLM, no Anthropic**.
 5. **"Active CI/CD RAG"** — confirm the interpretation in §5.
 
 ---

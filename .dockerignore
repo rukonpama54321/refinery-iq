@@ -1,0 +1,13 @@
+node_modules
+.next
+.git
+.gitignore
+docs
+UI
+data
+*.zip
+.env
+.env.*
+README.md
+**/*.md
+.claude

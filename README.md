@@ -16,7 +16,7 @@ A coherent product that exercises a broad set of AI-platform capabilities: multi
 |---|---|
 | App | **Next.js (App Router) + Node.js** |
 | LLM harness | **Vercel AI SDK** (one interface across providers) |
-| Chat LLMs | **Anthropic (Claude)** primary + **Groq** (fast/cheap + fallback) |
+| Chat LLMs | **Groq** (Llama 3.3 70B) primary + **Gemini** (alternate) — fully free, no Anthropic |
 | Embeddings & OCR | **Gemini** — `text-embedding-004` embeddings (768-dim) + vision OCR |
 | System-of-record | **Supabase** (Postgres) — auth, storage, app data |
 | Search / vectors | **Elasticsearch** (hybrid BM25 + dense-vector kNN) |

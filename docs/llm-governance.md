@@ -31,7 +31,7 @@ Mapped onto the system's `sensitivity` label (`public` / `internal` / `confident
 
 ### 2.2 Personal data & PII
 - **GOV-PII-1** — Employee personal data (contact, marital status, dependants/nominees, IDs) is processed only for legitimate purposes and **redacted before any 3rd-party API call**. *(Enforce: PII detector/redactor on egress.)* → FR-PII-1/2 · **Test:** an answer drawing on a record with a phone/email sends a redacted prompt to the provider.
-- **GOV-PII-2** — Confidential personal data is routed to the **primary trusted provider only** (Anthropic), never the secondary (Groq). *(Enforce: router by sensitivity.)* → FR-LLM-2, FR-PII-3 · **Test:** a confidential-class query's audit shows `anthropic`, never `groq`.
+- **GOV-PII-2** — Confidential personal data is routed to a **single designated provider only** (no cross-provider fallback) with maximum redaction. *(Enforce: router by sensitivity.)* → FR-LLM-2, FR-PII-3 · **Test:** a confidential-class query's audit shows only the designated provider.
 - **GOV-PII-3** — The system does not store raw PII in logs/cache; cache keys are scoped per access-level so answers never cross users. *(Enforce: logging redaction + cache key scope.)* → FR-CACHE-1, FR-LOG-1.
 
 ### 2.3 Grounding & citation
@@ -74,8 +74,8 @@ Request
 
 ```json
 [
-  { "name":"confidential-anthropic-only", "rule_type":"routing",
-    "applies_to":{"sensitivity":["confidential"]}, "config":{"providers":["anthropic"]} },
+  { "name":"confidential-single-provider", "rule_type":"routing",
+    "applies_to":{"sensitivity":["confidential"]}, "config":{"providers":["groq"],"fallback":false} },
   { "name":"redact-pii-before-egress", "rule_type":"pii",
     "applies_to":{"sensitivity":["internal","confidential"]}, "config":{"redact":["email","phone","id","address"]} },
   { "name":"restricted-no-render", "rule_type":"access",

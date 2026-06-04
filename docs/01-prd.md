@@ -77,7 +77,7 @@ Effective access = **tier × department**. (Revised per ADR-0002.)
 ### 4.2 Chat (primary surface)
 - **FR-CHAT-1** Streaming responses (token-by-token) in a conversational thread.
 - **FR-CHAT-2** Every substantive answer includes **inline citations** linking to source passages/documents (see 4.4).
-- **FR-CHAT-3** The UI shows **which model answered** (e.g., "Claude" vs "Groq") and a subtle "AI working" glimmer during retrieval/generation.
+- **FR-CHAT-3** The UI shows **which model answered** (e.g., "Groq · Llama 3.3 70B" vs "Gemini") and a subtle "AI working" glimmer during retrieval/generation.
 - **FR-CHAT-4** Users can **upload a file mid-chat**; it is ingested and immediately queryable in that thread.
 - **FR-CHAT-5** Conversation history is persisted per user and scoped to their access.
 - **FR-CHAT-6** If retrieval returns no permitted sources, the assistant says so and does **not** fabricate an answer.
@@ -108,7 +108,7 @@ Effective access = **tier × department**. (Revised per ADR-0002.)
 - **FR-AGENT-3** Agents share common tools: retrieval, PII scan, sentiment, token-metered LLM calls.
 
 ### 4.7 Multi-LLM harness & routing
-- **FR-LLM-1** A single harness (Vercel AI SDK) calls Anthropic and Groq through one interface for chat; Gemini provides embeddings + OCR.
+- **FR-LLM-1** A single harness (Vercel AI SDK) calls Groq and Gemini through one interface for chat; Gemini also provides embeddings + OCR.
 - **FR-LLM-2** Routing chooses a provider by **sensitivity** (confidential → primary trusted provider only, never the secondary), then cost/latency.
 - **FR-LLM-3** Provider **fallback**: if a provider errors/limits, fall back to the next provider **allowed by policy** (never one disallowed by sensitivity).
 - **FR-LLM-4** Admin can view/edit routing rules and default models.
@@ -171,7 +171,7 @@ Effective access = **tier × department**. (Revised per ADR-0002.)
 - **US-1 (Operator, RAG+citation):** *As an Operator, I ask for the current Unit 200 startup SOP and get a cited summary.*
   **AC:** streamed answer; citations resolve to the **current** version; no Maintenance/HR docs leak in; model shown.
 - **US-2 (Safety, sensitivity routing):** *As a Safety Officer, I ask about a sensitive (confidential) incident.*
-  **AC:** PII redacted before egress; routed to the primary trusted provider (Anthropic), never the secondary; UI shows the model; audit log records the routing reason.
+  **AC:** PII redacted before egress; routed to the single designated provider (no cross-provider fallback), maximally redacted; UI shows the model; audit log records the routing reason.
 - **US-3 (Engineer, OCR + versions):** *As an Engineer, I upload a scanned maintenance form; it becomes searchable; a re-upload supersedes it.*
   **AC:** OCR text indexed; ingestion status visible; new version becomes current; answers shift to the new version automatically.
 - **US-4 (HR, PII):** *As an HR Manager, I ask about a policy referencing employees.*
@@ -220,7 +220,7 @@ Entities the system must represent (formalized in `04-database.md`): **User, Rol
 
 ## 10. Dependencies & assumptions
 
-- Provided **Anthropic credits**; **Groq** + **Gemini** free tiers; **Supabase**, **Resend**, **Cloudflare** free tiers.
+- **Groq** + **Gemini** free tiers (no Anthropic — Claude Pro is not API access); **Supabase**, **Resend**, **Cloudflare** free tiers.
 - Single CPU-only demo machine; Docker Desktop available.
 - **Company LLM policy rules pending** → will refine FR-LLM-*, FR-PII-*, and `llm-governance.md`.
 - Timeline paced by SDLC phases (no fixed date assumed).
@@ -230,7 +230,7 @@ Entities the system must represent (formalized in `04-database.md`): **User, Rol
 ## 11. Open items
 
 1. Company LLM policy rules (→ governance doc; may add/extend FR-LLM-*, FR-PII-*).
-2. ~~Confirm Groq as the second provider~~ — ✅ resolved: Claude + Groq for chat; Gemini for embeddings/OCR; no local LLM.
+2. ~~Confirm chat providers~~ — ✅ resolved (ADR-0004): Groq + Gemini for chat; Gemini embeddings/OCR; no local LLM, no Anthropic.
 3. Exact sensitivity taxonomy (e.g., `public/internal/confidential`) — to finalize with policy rules.
 
 ---

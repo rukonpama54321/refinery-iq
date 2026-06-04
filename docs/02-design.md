@@ -94,7 +94,7 @@ Stat cards (Total Documents, Active Users, Queries Today, Avg Response), **Recen
 | RBAC tiers/departments | Rail (Admin-only), department selector, RoleBadge |
 
 ## 9. Reflecting ADR-0002 in the UI (data adjustments)
-The prototype's `data.jsx` needs: tiers already = Admin/Manager/End User ✅; **add the HR department** (currently 5 — add HR to `DEPARTMENTS`/users/docs); org name already **Northgate Refining** ✅; model picker → **Claude + Llama 3.3 70B (Groq)**, remove **GPT-4o**.
+The prototype's `data.jsx` needs: tiers already = Admin/Manager/End User ✅; **add the HR department** (currently 5 — add HR to `DEPARTMENTS`/users/docs); org name already **Northgate Refining** ✅; model picker → **Groq (Llama 3.3 70B) + Gemini**, remove **Claude/GPT-4o** (ADR-0004).
 
 ## 10. Gaps to add for full PRD coverage
 - **Bug-reporting UI** (FR-BUG-*) — a "Report a bug" entry (account menu / footer) → modal capturing description + auto-context; Admin **bug backlog** view. *Not in the prototype yet.*

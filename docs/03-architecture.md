@@ -25,21 +25,19 @@ flowchart TB
       App[RefineryIQ platform]
     end
     Supabase[(Supabase\nPostgres + Auth + Storage)]
-    Anthropic[Anthropic API]
-    Groq[Groq API]
-    Gemini[Gemini API - OCR]
+    Groq[Groq API - chat]
+    Gemini[Gemini API - chat + embeddings + OCR]
     Resend[Resend - email]
     CF[Cloudflare Tunnel]
 
     User -->|HTTPS| CF --> App
     App --> Supabase
-    App -->|hosted LLM| Anthropic
-    App -->|hosted LLM| Groq
-    App -->|OCR| Gemini
+    App -->|chat| Groq
+    App -->|chat / embeddings / OCR| Gemini
     App -->|magic-link/OTP| Resend
 ```
 
-External managed services (all free tier / provided credits): Supabase, Anthropic, Groq, Gemini, Resend, Cloudflare. Everything else runs locally in Docker.
+External managed services (all free tier): Supabase, Groq, Gemini, Resend, Cloudflare. No Anthropic (ADR-0004). Everything else runs locally in Docker.
 
 ---
 
@@ -54,13 +52,13 @@ flowchart LR
       Redis[(Redis\ncache + queue)]
     end
     Supabase[(Supabase cloud)]
-    Ext[Anthropic / Groq / Gemini / Resend]
+    Ext[Groq / Gemini / Resend]
 
     Web -->|enqueue jobs| Redis
     Worker -->|consume jobs| Redis
     Web --> ES
     Worker --> ES
-    Web -->|chat: Claude/Groq| Ext
+    Web -->|chat: Groq/Gemini| Ext
     Worker -->|OCR + embeddings: Gemini| Ext
     Web --> Supabase
     Worker --> Supabase
@@ -75,7 +73,7 @@ flowchart LR
 | **redis** | Redis 7 | LLM response cache + BullMQ job queue + sessions/rate state |
 | **supabase** *(cloud)* | Postgres + Auth + Storage | System-of-record, auth, file blobs + versions |
 
-> No local LLM: chat uses Anthropic/Groq APIs; embeddings + OCR use Gemini. This removes the Ollama container (and ~2 GB RAM) and avoids slow CPU inference.
+> No local LLM: chat uses Groq + Gemini APIs; embeddings + OCR use Gemini (ADR-0004). This removes the Ollama container (and ~2 GB RAM) and avoids slow CPU inference.
 
 > Same Docker image runs `web` and `worker` (different entrypoint) — see `infra/Dockerfile` (architecture decision: one build, two roles).
 
@@ -99,9 +97,9 @@ flowchart TB
     Tools --> Harness[LLM harness Vercel AI SDK]
     Harness --> Cache[(Redis cache)]
     Harness --> Route{Route by policy}
-    Route -->|confidential: redact + trusted only| Anthropic
+    Route -->|confidential: redact + single provider| Groq
     Route -->|fast/cheap| Groq
-    Route -->|quality| Anthropic
+    Route -->|alternate| Gemini
     Harness --> Meter[Token meter -> Postgres]
     A1 --> Out[Answer + citations + model badge]
 ```
@@ -176,7 +174,7 @@ A new/updated `DocumentVersion` (re-upload, or "set current") **automatically en
 All chat is via 3rd-party APIs (no local model), so sensitivity drives **redaction strictness** and **provider trust**, not local-vs-cloud.
 1. Guard sets a sensitivity level (e.g., `public`/`internal`/`confidential`).
 2. PII is redacted before **every** egress; redaction strictness scales with sensitivity (FR-PII-2).
-3. Provider selection: `confidential` → **primary trusted provider only** (Anthropic), never the secondary (Groq); `internal`/`public` → cost/latency routing (Groq cheap, Anthropic quality).
+3. Provider selection: `confidential` → **single designated provider only** (default Groq), no cross-provider fallback; `internal`/`public` → cost/latency routing across Groq (primary) and Gemini (alternate).
 4. The chosen model + routing reason are badged in the UI and written to the audit log.
 
 ---
@@ -206,7 +204,7 @@ All chat is via 3rd-party APIs (no local model), so sensitivity drives **redacti
 
 - **Response cache (FR-CACHE-1):** Redis key = hash(normalized prompt + context fingerprint + model + policy scope). Hits skip the model entirely. Scoped per access-level to avoid leaking across roles.
 - **Context optimization (FR-OPT-1):** trim/compact retrieved context to the top fused passages; cap tokens per hosted call.
-- **Cost control (NFR-COST-1):** routing prefers Groq (free) for cheap tasks; caching + budgets keep Anthropic spend within credits.
+- **Cost control (NFR-COST-1):** routing prefers Groq (free) for cheap tasks; caching + budgets keep usage within the Groq/Gemini free tiers.
 
 ---
 
@@ -273,7 +271,7 @@ flowchart LR
 | App framework | Next.js (App Router) | 15.x |
 | LLM harness | Vercel AI SDK | latest |
 | Queue | BullMQ | latest |
-| Chat LLM | Anthropic (Claude) · Groq | — |
+| Chat LLM | Groq (Llama 3.3 70B) · Gemini | — |
 | Embeddings + OCR | Gemini · `text-embedding-004` (768-dim) + vision | — |
 | RDBMS/Auth/Storage | Supabase (Postgres 15) | cloud |
 | Search/vectors | Elasticsearch | 8.15 |
@@ -300,7 +298,7 @@ flowchart LR
 1. **Hybrid fusion method** — RRF vs weighted sum (decide in build; default RRF).
 2. **PII engine** — LLM-based vs a Presidio sidecar (start LLM-based; sidecar if precision needed).
 3. **Sensitivity taxonomy** — `public/internal/confidential` pending company **LLM policy rules** (→ `llm-governance.md`).
-4. **Sentiment model** — Groq (free) vs Anthropic; default Groq for cost.
+4. **Sentiment model** — Groq vs Gemini; default Groq for cost.
 5. **Conversation memory depth** — per-thread window; long-term memory out of MVP scope.
 
 ADRs will live in `docs/adr/` as these are decided.

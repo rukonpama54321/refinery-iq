@@ -1,0 +1,35 @@
+{
+  "name": "refinery-iq",
+  "version": "0.1.0",
+  "private": true,
+  "description": "RefineryIQ — AI-first refinery assistant (multi-agent RAG demo)",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "worker": "tsx worker/index.ts",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "next": "15.1.6",
+    "react": "19.0.0",
+    "react-dom": "19.0.0",
+    "geist": "^1.3.1",
+    "ai": "^4.1.0",
+    "@ai-sdk/google": "^1.1.0",
+    "@ai-sdk/groq": "^1.1.0",
+    "@supabase/supabase-js": "^2.48.0",
+    "@elastic/elasticsearch": "^8.17.0",
+    "ioredis": "^5.4.2",
+    "bullmq": "^5.34.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "@types/node": "^22.10.7",
+    "@types/react": "^19.0.7",
+    "@types/react-dom": "^19.0.3",
+    "tsx": "^4.19.2"
+  }
+}
