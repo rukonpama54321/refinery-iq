@@ -1,6 +1,6 @@
 # 03 — Software Architecture
 
-> **Status:** Draft for review · **Phase:** Architecture (SDLC step 4) · **Last updated:** 2026-06-04
+> **Status:** 🔒 Approved — Locked v1.0 (2026-06-04) · **Phase:** Architecture (SDLC step 4)
 > **Builds on:** [00 — Brainstorm](00-brainstorm.md) · [01 — PRD](01-prd.md)
 > Design (`02`) and Database (`04`) are produced alongside this; this doc is the source of truth for *how the system is built*.
 

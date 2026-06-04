@@ -1,6 +1,6 @@
 # 00 — Brainstorm & Vision
 
-> **Status:** Draft for review · **Phase:** Brainstorm (SDLC step 1) · **Last updated:** 2026-06-04
+> **Status:** 🔒 Approved — Locked v1.0 (2026-06-04) · **Phase:** Brainstorm (SDLC step 1)
 
 This is the founding document. It frames *why* the project exists, *who* it serves, *what* it is, and *how* each required tech capability lands as a real feature. Later docs (PRD, design, architecture, database) refine the decisions made here.
 

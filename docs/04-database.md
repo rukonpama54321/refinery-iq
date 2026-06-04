@@ -1,6 +1,6 @@
 # 04 — Database Design (multi-DB)
 
-> **Status:** Draft for review · **Phase:** Data design (SDLC step 5) · **Last updated:** 2026-06-04
+> **Status:** 🔒 Approved — Locked v1.0 (2026-06-04) · **Phase:** Data design (SDLC step 5)
 > **Builds on:** [01 — PRD](01-prd.md) · [03 — Architecture](03-architecture.md)
 
 Three datastores, each with a clear job (PRD FR-DB / Architecture §3):

@@ -1,6 +1,6 @@
 # 01 — Product Requirements Document (PRD)
 
-> **Status:** Draft for review · **Phase:** Requirements (SDLC step 2) · **Last updated:** 2026-06-04
+> **Status:** 🔒 Approved — Locked v1.0 (2026-06-04) · **Phase:** Requirements (SDLC step 2)
 > **Builds on:** [00 — Brainstorm & Vision](00-brainstorm.md)
 
 Requirements are given stable IDs (`FR-*` functional, `NFR-*` non-functional) so design, tasks, and test cases can trace back to them.
