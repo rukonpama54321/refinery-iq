@@ -1,6 +1,6 @@
 # 00 — Brainstorm & Vision
 
-> **Status:** 🔒 Approved — Locked v1.0 (2026-06-04) · **Phase:** Brainstorm (SDLC step 1)
+> **Status:** 🔒 Approved — Locked v1.1 (2026-06-04, ADR-0002) · **Phase:** Brainstorm (SDLC step 1)
 
 This is the founding document. It frames *why* the project exists, *who* it serves, *what* it is, and *how* each required tech capability lands as a real feature. Later docs (PRD, design, architecture, database) refine the decisions made here.
 
@@ -26,18 +26,19 @@ Refinery knowledge is scattered across PDFs, scanned forms, spreadsheets, intran
 
 ## 2. Users & departments
 
-Single fictional organization: **"Meridian Refinery."** Departments and the personas we'll design for:
+Single fictional organization: **"Northgate Refining."** Six departments, with access governed by **3 tiers** (Admin / Manager / End User) per [ADR-0002](adr/0002-design-driven-roles-departments.md):
 
-| Department | Persona | What they ask RefineryIQ |
+| Department | Example asker (tier) | What they ask RefineryIQ |
 |---|---|---|
-| **Operations** | Control-room Operator | "Show the current startup SOP for Unit 200." "What were yesterday's flare events?" |
-| **Maintenance / Engineering** | Reliability Engineer | "Find the last 3 maintenance reports for pump P-101 and summarize recurring faults." |
-| **Safety / HSE** | Safety Officer | "Summarize open hot-work permits." "What does the H2S exposure procedure say?" (cited) |
-| **Human Resources** | HR Manager | "What's the leave policy for shift workers?" "Draft a response to this grievance." |
-| **Management** | Plant Manager | "Give me this week's operational + safety summary across departments." |
-| **Platform** | Admin | Manages users, roles, departments, documents, models, and reviews audit/usage. |
+| **Process Engineering** | Senior Process Operator (End User) | "Show the current startup SOP for Unit 200." "Max skin temp for the CDU charge heater?" |
+| **Maintenance & Reliability** | Reliability Mgr (Manager) | "Find the last 3 maintenance reports for pump P-101 and summarize recurring faults." |
+| **HSE** | HSE Lead (Manager) | "Summarize open hot-work permits." "What does the H2S exposure procedure say?" (cited) |
+| **Operations** | Shift Operator (End User) | "What were yesterday's flare events?" "Turnaround 2026 critical path?" |
+| **Lab & Quality** | Lab Technician (End User) | "Recommended cut points for Bakken light sweet on the CDU?" |
+| **HR** | HR Manager (Manager) | "What's the leave policy for shift workers?" "Draft a response to this grievance." |
+| _(platform)_ | Plant Manager (Admin) | Manages users, tiers, departments, documents, models, and reviews audit/usage across all departments. |
 
-Roles map to a **RBAC** matrix (defined fully in the PRD/DB docs). Department scoping means the Operations corpus is invisible to HR queries unless a role explicitly grants cross-department access (e.g., Plant Manager, Admin).
+Access = **tier × department** (defined fully in the PRD/DB docs). Department scoping means the Operations corpus is invisible to HR queries unless a user is granted cross-department access (Managers, optionally) or is an Admin.
 
 ---
 
@@ -80,7 +81,7 @@ How each required capability shows up as something demonstrable.
 | 8 | **Token utilization** | Per-request/user/department token & cost metering, shown on dashboard |
 | 9 | **RAG** | Core answer path; retrieval feeds every substantive response |
 | 10 | **Understand different file types** | PDF, DOCX, XLSX, CSV, images via ingestion loaders (+ OCR) |
-| 11 | **Different roles (RBAC)** | Operator, Engineer, Safety, HR, Manager, Admin × department scope |
+| 11 | **Different roles (RBAC)** | 3 tiers (End User / Manager / Admin) × 6 departments |
 | 12 | **File upload** | In-chat and Admin library upload → ingestion pipeline |
 | 13 | **File version control** | Document versions tracked in Postgres + Supabase Storage; "current revision" semantics |
 | 14 | **LLM caching** | Redis semantic/response cache keyed by prompt+context+model |
@@ -103,7 +104,7 @@ How each required capability shows up as something demonstrable.
 
 **In scope**
 - Email auth (Supabase + Resend magic-link/OTP), single-tenant.
-- RBAC across the 6 roles and the departments in §2.
+- RBAC across the 3 tiers and 6 departments in §2.
 - Chat with streaming, citations, and visible model routing (Claude vs Groq, by sensitivity/cost).
 - Document upload (chat + admin), ingestion (parse → OCR → PII scan → embed → index), and **version history**.
 - Hybrid search (Elasticsearch) powering the RAG/Document agent + at least one other specialist agent end-to-end (Safety or Operations).

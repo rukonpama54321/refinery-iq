@@ -1,6 +1,6 @@
 # 04 — Database Design (multi-DB)
 
-> **Status:** 🔒 Approved — Locked v1.0 (2026-06-04) · **Phase:** Data design (SDLC step 5)
+> **Status:** 🔒 Approved — Locked v1.1 (2026-06-04, ADR-0002) · **Phase:** Data design (SDLC step 5)
 > **Builds on:** [01 — PRD](01-prd.md) · [03 — Architecture](03-architecture.md)
 
 Three datastores, each with a clear job (PRD FR-DB / Architecture §3):
@@ -30,8 +30,8 @@ Files (blobs) live in **Supabase Storage**, referenced by `document_versions.sto
 
 ### Enum types
 ```sql
-create type role_t        as enum ('operator','engineer','safety_officer','hr_manager','plant_manager','admin');
-create type department_t  as enum ('operations','maintenance','safety','hr','management','platform');
+create type role_t        as enum ('end_user','manager','admin');   -- 3 access tiers (ADR-0002)
+create type department_t  as enum ('process_engineering','maintenance_reliability','hse','operations','lab_quality','hr');
 create type sensitivity_t as enum ('public','internal','confidential');   -- final taxonomy pending LLM policy rules
 create type doc_status_t  as enum ('queued','processing','indexed','failed');
 create type msg_role_t    as enum ('user','assistant','system','tool');
@@ -240,9 +240,8 @@ alter table documents enable row level security;
 
 create policy doc_read on documents for select using (
   deleted_at is null and (
-    -- admins & managers see all
-    exists (select 1 from app_users u where u.id = auth.uid()
-            and u.role in ('admin','plant_manager'))
+    -- admins see all
+    exists (select 1 from app_users u where u.id = auth.uid() and u.role = 'admin')
     -- home department
     or department = (select home_dept from app_users where id = auth.uid())
     -- explicit extra grants

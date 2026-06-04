@@ -1,6 +1,6 @@
 # 01 — Product Requirements Document (PRD)
 
-> **Status:** 🔒 Approved — Locked v1.0 (2026-06-04) · **Phase:** Requirements (SDLC step 2)
+> **Status:** 🔒 Approved — Locked v1.1 (2026-06-04, ADR-0002) · **Phase:** Requirements (SDLC step 2)
 > **Builds on:** [00 — Brainstorm & Vision](00-brainstorm.md)
 
 Requirements are given stable IDs (`FR-*` functional, `NFR-*` non-functional) so design, tasks, and test cases can trace back to them.
@@ -24,35 +24,45 @@ RefineryIQ is a single-tenant, AI-first enterprise assistant for a refinery. Thi
 
 ## 2. Personas
 
-Per Brainstorm §2: **Operator** (Operations), **Reliability Engineer** (Maintenance/Eng), **Safety Officer** (HSE), **HR Manager** (HR), **Plant Manager** (Management), **Admin** (Platform). Each belongs to one home department; some roles grant cross-department read.
+> **Revised by [ADR-0002](adr/0002-design-driven-roles-departments.md):** access is governed by **3 tiers**, not 6 named roles. Each user has one tier **and** one home department; job titles are display labels only.
+
+| Tier | Example job titles | Scope |
+|---|---|---|
+| **End User** | Senior Process Operator, Lab Technician | Read-only within home department; chat + cited answers; request access to restricted docs |
+| **Manager** | Maintenance & Reliability Mgr, HSE Lead | Manage own department's documents/versions; department dashboard + logs; optional cross-dept read |
+| **Admin** | Plant Manager / Platform Admin | Full control: users, roles, departments, docs, model/routing policy, audit; all departments |
 
 ---
 
 ## 3. Roles, permissions & RBAC
 
-### 3.1 Departments
-`operations`, `maintenance`, `safety`, `hr`, `management`, `platform`.
+### 3.1 Departments (6)
+`process_engineering`, `maintenance_reliability`, `hse`, `operations`, `lab_quality`, `hr`.
 
-### 3.2 Roles → capabilities (RBAC matrix)
+### 3.2 Tiers → capabilities (RBAC matrix)
 
-| Capability | Operator | Engineer | Safety | HR | Manager | Admin |
-|---|:--:|:--:|:--:|:--:|:--:|:--:|
-| Chat / ask | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Read **own-dept** documents | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Read **cross-dept** documents | — | — | — | — | ✅ (all) | ✅ (all) |
-| Upload documents | ✅ (own) | ✅ (own) | ✅ (own) | ✅ (own) | ✅ | ✅ |
-| Manage document versions / set "current" | — | ✅ (own) | ✅ (own) | ✅ (own) | ✅ | ✅ |
-| View dashboard (own-dept) | ✅ | ✅ | ✅ | ✅ | ✅ (all) | ✅ (all) |
-| Manage users / roles / departments | — | — | — | — | — | ✅ |
-| Configure models / routing / LLM-policy | — | — | — | — | — | ✅ |
-| View audit log | — | — | — | — | view (own-dept) | ✅ (all) |
-| File a bug report | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Triage bug reports | — | — | — | — | — | ✅ |
+Effective access = **tier × department**. (Revised per ADR-0002.)
+
+| Capability | End User | Manager | Admin |
+|---|:--:|:--:|:--:|
+| Chat / ask | ✅ | ✅ | ✅ |
+| Read **own-dept** documents | ✅ | ✅ | ✅ |
+| Read **cross-dept** documents | — | optional (if granted) | ✅ (all) |
+| Upload documents | — | ✅ (own dept) | ✅ |
+| Manage document versions / set "current" | — | ✅ (own dept) | ✅ |
+| View dashboard | own-dept | own-dept (+ granted) | ✅ (all) |
+| Request access to restricted docs | ✅ | ✅ | n/a (has access) |
+| Manage users / roles / departments | — | — | ✅ |
+| Configure models / routing / LLM-policy | — | — | ✅ |
+| View audit log | — | own-dept | ✅ (all) |
+| File a bug report | ✅ | ✅ | ✅ |
+| Triage bug reports | — | — | ✅ |
 
 - **FR-RBAC-1** Every retrieval and answer MUST be filtered by the requester's permitted departments.
-- **FR-RBAC-2** Documents carry a `department` and `sensitivity` label; access is denied if the role lacks scope.
-- **FR-RBAC-3** Admin-only screens/actions MUST be inaccessible (UI + API) to other roles.
+- **FR-RBAC-2** Documents carry a `department` and `sensitivity` label; access is denied if the tier/department lacks scope.
+- **FR-RBAC-3** Admin-only screens/actions MUST be inaccessible (UI + API) to other tiers.
 - **FR-RBAC-4** A cross-department query by an unscoped user returns only the permitted subset, and the UI states the scope applied.
+- **FR-RBAC-5** A restricted document a user can't read still appears as a **citation** they can **request access** to (the request is audit-logged).
 
 ---
 
@@ -183,7 +193,7 @@ Entities the system must represent (formalized in `04-database.md`): **User, Rol
 
 ## 8. Demo data (synthetic corpus)
 
-Generated content for "Meridian Refinery" (confirmed: synthetic):
+Generated content for "Northgate Refining" (confirmed: synthetic):
 - **Operations** — startup/shutdown SOPs, daily logs, flare-event records.
 - **Maintenance/Eng** — equipment maintenance reports (incl. a few **scanned** forms for OCR), reliability summaries.
 - **Safety/HSE** — procedures (e.g., H2S, hot-work permits), incident reports, **scanned** permit forms.
