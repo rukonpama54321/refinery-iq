@@ -145,7 +145,7 @@ How each required capability shows up as something demonstrable.
 | Infra | All services in Docker Compose on the demo box; Supabase managed (cloud); Cloudflare Tunnel for public URL |
 | Environments | local · test · prod |
 | Hardware | Single CPU-only machine; `llama3.2:3b` runs comfortably (<8 GB) |
-| Demo data | **Assumption:** synthetic refinery corpus (pending confirmation) |
+| Demo data | **Confirmed:** synthetic refinery corpus (generated) |
 
 **Noted fallback:** if Elasticsearch's JVM overhead proves heavy for the demo box, swap to Supabase `pgvector` + Postgres full-text for hybrid RAG and drop the ES container. ES remains the plan per requirement.
 
@@ -153,7 +153,7 @@ How each required capability shows up as something demonstrable.
 
 ## 8. Open questions
 
-1. **Demo data** — generate a synthetic corpus (recommended) or will real (non-confidential) docs be provided?
+1. ~~**Demo data**~~ — ✅ resolved: synthetic corpus (see PRD §8).
 2. **Company LLM policy rules** — to be supplied; they drive routing, refusals, PII rules, and audit (→ `docs/llm-governance.md`).
 3. **Timeline** — no fixed date assumed; pacing by SDLC phases.
 4. **4th LLM slot** — Groq confirmed as the second hosted provider? (assumed yes)
