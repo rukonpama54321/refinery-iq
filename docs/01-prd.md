@@ -191,16 +191,17 @@ Entities the system must represent (formalized in `04-database.md`): **User, Rol
 
 ---
 
-## 8. Demo data (synthetic corpus)
+## 8. Demo data (real-document-first corpus)
 
-Generated content for "Northgate Refining" (confirmed: synthetic):
-- **Operations** — startup/shutdown SOPs, daily logs, flare-event records.
-- **Maintenance/Eng** — equipment maintenance reports (incl. a few **scanned** forms for OCR), reliability summaries.
-- **Safety/HSE** — procedures (e.g., H2S, hot-work permits), incident reports, **scanned** permit forms.
-- **HR** — leave/shift policies, code of conduct, sample (synthetic) grievance text.
-- **Management** — weekly summaries.
-- Volume kept modest (tens of docs) to respect free-tier limits while exercising every file type + OCR + versions.
-- Synthetic PII is fabricated and clearly fictional.
+> **Revised by [ADR-0003](adr/0003-real-source-docs-corpus.md):** the corpus is now built primarily from real source documents (local-only, git-ignored), with a slim synthetic supplement. Public artifacts stay generic ("Northgate Refining").
+
+**Primary sources** (`docs/policies/`, local-only):
+- **HCU Hydrocracker Unit manual** (PDF, demo-grade) → *Process Engineering / Operations / HSE / Maintenance*: process description, equipment (R-101, V-101, C-101, K-101, H-101…), start-up/shutdown procedures, **safety limits** (H₂/H₂S, pressures, temperatures), parameters, troubleshooting. Drives cited operational Q&A and OCR (a scanned page can be added).
+- **HR Policy Manual v1.0 + v2.0** (DOCX, INTERNAL) → *HR*: conditions of service, conduct, leave, allowances, grievance/discipline. The **two versions power the version-control demo** — v2 supersedes v1, and "current" answers (e.g., the revised allowance figure) reflect v2 with version history visible.
+
+**Slim synthetic supplement** (only to fill gaps): a couple of Maintenance/Lab docs and one **scanned** form to exercise OCR; any PII fabricated and clearly fictional.
+
+**Demo Q&A this enables:** "reactor operating pressure?" (HCU, cited limit) · "H₂S exposure limit?" · "start-up procedure steps?" · "current leave entitlement / allowance?" (HR v2, with version note). Confidentiality, PII redaction, restricted-access, and citations are all exercised against this content — see [`llm-governance.md`](llm-governance.md).
 
 ---
 

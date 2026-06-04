@@ -146,7 +146,7 @@ How each required capability shows up as something demonstrable.
 | Infra | All services in Docker Compose on the demo box; Supabase managed (cloud); Cloudflare Tunnel for public URL |
 | Environments | local · test · prod |
 | Hardware | Single CPU-only machine (~16 GB); no local LLM, so RAM is dominated by Elasticsearch |
-| Demo data | **Confirmed:** synthetic refinery corpus (generated) |
+| Demo data | **Real-document-first** (ADR-0003): HCU manual + HR manual v1/v2 (local-only) + slim synthetic supplement |
 
 **Noted fallback:** if Elasticsearch's JVM overhead proves heavy for the demo box, swap to Supabase `pgvector` + Postgres full-text for hybrid RAG and drop the ES container. ES remains the plan per requirement.
 
@@ -155,7 +155,7 @@ How each required capability shows up as something demonstrable.
 ## 8. Open questions
 
 1. ~~**Demo data**~~ — ✅ resolved: synthetic corpus (see PRD §8).
-2. **Company LLM policy rules** — to be supplied; they drive routing, refusals, PII rules, and audit (→ `docs/llm-governance.md`).
+2. ~~**Company LLM policy rules**~~ — ✅ resolved: provided via the HR manual + HCU manual; captured (abstracted) in [`docs/llm-governance.md`](llm-governance.md) per ADR-0003.
 3. **Timeline** — no fixed date assumed; pacing by SDLC phases.
 4. ~~**4th LLM slot**~~ — ✅ resolved: Claude + Groq (chat), Gemini (embeddings/OCR); **local LLM dropped**.
 5. **"Active CI/CD RAG"** — confirm the interpretation in §5.

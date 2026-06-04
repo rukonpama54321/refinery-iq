@@ -46,3 +46,11 @@ Thumbs.db
 
 # Local archives
 *.zip
+
+# Raw source documents — may be confidential, never published
+data/source-docs/*
+!data/source-docs/README.md
+
+# Real source/policy documents (HR manual, HCU manual) — local-only, not published
+docs/policies/*
+!docs/policies/README.md
