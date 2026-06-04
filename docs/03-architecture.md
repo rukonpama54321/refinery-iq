@@ -10,7 +10,7 @@
 
 - **AI-first, server-authoritative.** The chat path is the spine; RBAC and LLM-policy are enforced **server-side** before any model call (NFR-SEC-1).
 - **Sync UI, async heavy work.** The web tier responds fast; ingestion/OCR/embedding run on a **worker** off a Redis queue (NFR-SCALE-1).
-- **Policy decides routing.** Sensitivity classification — not convenience — decides local-vs-hosted model (G3, FR-LLM-2).
+- **Policy decides routing.** Sensitivity classification — not convenience — decides redaction strictness and which provider may be used (G3, FR-LLM-2).
 - **Everything cited or nothing claimed.** RAG passages carry provenance end-to-end (FR-CHAT-2, FR-RAG-3).
 - **Free/OSS, single box, one command.** Whole stack via `docker compose up` on the demo machine; Supabase is the only managed (cloud) dependency (NFR-REL-1, NFR-PORT-1).
 
@@ -52,7 +52,6 @@ flowchart LR
       Worker[worker\nBullMQ consumer]
       ES[(Elasticsearch\nhybrid BM25 + kNN)]
       Redis[(Redis\ncache + queue)]
-      Ollama[Ollama\nllama3.2:3b + nomic-embed-text]
     end
     Supabase[(Supabase cloud)]
     Ext[Anthropic / Groq / Gemini / Resend]
@@ -61,12 +60,10 @@ flowchart LR
     Worker -->|consume jobs| Redis
     Web --> ES
     Worker --> ES
-    Web --> Ollama
-    Worker --> Ollama
+    Web -->|chat: Claude/Groq| Ext
+    Worker -->|OCR + embeddings: Gemini| Ext
     Web --> Supabase
     Worker --> Supabase
-    Web --> Ext
-    Worker -->|OCR| Ext
     Web -->|cache get/set| Redis
 ```
 
@@ -76,8 +73,9 @@ flowchart LR
 | **worker** | Node + BullMQ | Ingestion pipeline: parse → OCR → PII → chunk → embed → index; re-index on version change |
 | **elasticsearch** | Elasticsearch 8.x single-node | Document chunk index; hybrid retrieval |
 | **redis** | Redis 7 | LLM response cache + BullMQ job queue + sessions/rate state |
-| **ollama** | Ollama | Local chat model + local embeddings |
 | **supabase** *(cloud)* | Postgres + Auth + Storage | System-of-record, auth, file blobs + versions |
+
+> No local LLM: chat uses Anthropic/Groq APIs; embeddings + OCR use Gemini. This removes the Ollama container (and ~2 GB RAM) and avoids slow CPU inference.
 
 > Same Docker image runs `web` and `worker` (different entrypoint) — see `infra/Dockerfile` (architecture decision: one build, two roles).
 
@@ -101,7 +99,7 @@ flowchart TB
     Tools --> Harness[LLM harness Vercel AI SDK]
     Harness --> Cache[(Redis cache)]
     Harness --> Route{Route by policy}
-    Route -->|sensitive / local-only| Ollama
+    Route -->|confidential: redact + trusted only| Anthropic
     Route -->|fast/cheap| Groq
     Route -->|quality| Anthropic
     Harness --> Meter[Token meter -> Postgres]
@@ -153,7 +151,7 @@ sequenceDiagram
     participant Q as Redis queue
     participant K as worker
     participant G as Gemini OCR
-    participant OL as Ollama embed
+    participant OL as Gemini embed
     participant E as Elasticsearch
     U->>W: upload file (+ dept, sensitivity)
     W->>S: store blob -> new DocumentVersion
@@ -165,8 +163,8 @@ sequenceDiagram
         G-->>K: text
     end
     K->>K: PII scan + tag, chunk
-    K->>OL: embed chunks (nomic-embed-text)
-    OL-->>K: vectors
+    K->>OL: embed chunks (text-embedding-004)
+    OL-->>K: vectors (768-dim)
     K->>E: index chunks (text + vector + dept + sensitivity + version)
     K->>W: status -> indexed (dashboard)
 ```
@@ -175,18 +173,19 @@ sequenceDiagram
 A new/updated `DocumentVersion` (re-upload, or "set current") **automatically enqueues** re-ingestion; old-version chunks are superseded so retrieval defaults to the current version. A CI job can additionally rebuild/validate the index from source-of-truth on demand.
 
 ### 5.4 Sensitivity routing (G3, FR-LLM-2/3, FR-PII-2/3)
-1. Guard sets a sensitivity ceiling (e.g., `confidential` → **local-only**).
-2. Harness picks the model: local-only → Ollama; else cost/latency → Groq, quality → Anthropic.
-3. Before any **hosted** call, PII is redacted (FR-PII-2). If policy forbids egress, it stays on Ollama.
+All chat is via 3rd-party APIs (no local model), so sensitivity drives **redaction strictness** and **provider trust**, not local-vs-cloud.
+1. Guard sets a sensitivity level (e.g., `public`/`internal`/`confidential`).
+2. PII is redacted before **every** egress; redaction strictness scales with sensitivity (FR-PII-2).
+3. Provider selection: `confidential` → **primary trusted provider only** (Anthropic), never the secondary (Groq); `internal`/`public` → cost/latency routing (Groq cheap, Anthropic quality).
 4. The chosen model + routing reason are badged in the UI and written to the audit log.
 
 ---
 
 ## 6. Multi-LLM harness & routing
 
-- **One interface** via **Vercel AI SDK** providers: `ollama`, `anthropic`, `groq` (+ `gemini` used for OCR/vision). OpenAI is a documented, unconfigured fallback.
-- **Routing inputs:** sensitivity ceiling (hard constraint) → task type → cost/latency budget → provider health.
-- **Fallback chain** (FR-LLM-3): hosted error/limit → next allowed provider → local. Never downgrade *below* the sensitivity ceiling.
+- **One interface** via **Vercel AI SDK** providers: `anthropic`, `groq` for chat (+ `gemini` for OCR/vision **and** embeddings). OpenAI is a documented, unconfigured fallback.
+- **Routing inputs:** sensitivity (hard constraint on provider) → task type → cost/latency budget → provider health.
+- **Fallback chain** (FR-LLM-3): provider error/limit → next provider **allowed by policy**. Never use a provider disallowed by the sensitivity level.
 - **Token metering** wraps every call (FR-TOK-1): model, input/output tokens, latency, cache hit/miss, estimated cost → `TokenUsage`.
 - **Admin-tunable** routing rules and default models (FR-LLM-4, FR-ADMIN-3).
 
@@ -195,7 +194,7 @@ A new/updated `DocumentVersion` (re-upload, or "set current") **automatically en
 ## 7. RAG design
 
 - **Chunking:** structure-aware (headings/pages), ~500–800 tokens with overlap; each chunk keeps `doc_id`, `version_id`, location (page/section), `department`, `sensitivity`, `pii_flags`.
-- **Embeddings:** Ollama `nomic-embed-text` (local, free) → dense vectors stored in ES `dense_vector`.
+- **Embeddings:** Gemini `text-embedding-004` (free tier, 768-dim) → dense vectors stored in ES `dense_vector`.
 - **Hybrid retrieval (FR-RAG-1):** BM25 query **+** kNN vector query, fused (RRF/weighted) into one ranked set.
 - **RBAC filter (FR-RAG-2):** ES query always includes a `department ∈ permitted` + sensitivity filter **before** ranking.
 - **Citations (FR-RAG-3):** retrieved chunks carry provenance; the answer cites doc + version + location; UI links resolve to the source.
@@ -207,7 +206,7 @@ A new/updated `DocumentVersion` (re-upload, or "set current") **automatically en
 
 - **Response cache (FR-CACHE-1):** Redis key = hash(normalized prompt + context fingerprint + model + policy scope). Hits skip the model entirely. Scoped per access-level to avoid leaking across roles.
 - **Context optimization (FR-OPT-1):** trim/compact retrieved context to the top fused passages; cap tokens per hosted call.
-- **Cost control (NFR-COST-1):** routing prefers local/Groq for cheap tasks; caching + budgets keep hosted spend within credits.
+- **Cost control (NFR-COST-1):** routing prefers Groq (free) for cheap tasks; caching + budgets keep Anthropic spend within credits.
 
 ---
 
@@ -217,7 +216,7 @@ A new/updated `DocumentVersion` (re-upload, or "set current") **automatically en
 - **AuthZ:** RBAC enforced **server-side** in the Guard for every route, retrieval, and admin action (NFR-SEC-1, FR-RBAC-3). Postgres **Row-Level Security** as defense-in-depth on Supabase tables.
 - **Secrets (NFR-SEC-2):** `.env` per environment, never committed; CI uses GitHub Actions secrets.
 - **Env isolation (NFR-SEC-3):** separate Supabase projects/keys + ES indices + buckets per environment.
-- **PII (FR-PII-*, NFR-PRIV-1):** detect+tag on ingest; redact before hosted egress; policy can force local-only.
+- **PII (FR-PII-*, NFR-PRIV-1):** detect+tag on ingest; redact before **every** API egress; policy can restrict high-sensitivity content to the primary trusted provider.
 - **Audit (FR-LOG-3):** auth events, doc/version changes, admin/policy changes, and every policy-driven refusal/redaction recorded immutably-style in Postgres.
 
 ---
@@ -238,7 +237,7 @@ A new/updated `DocumentVersion` (re-upload, or "set current") **automatically en
 | Concern | local | test | prod |
 |---|---|---|---|
 | Supabase | local project | test project | prod project |
-| ES / Redis / Ollama | Compose | Compose | Compose (resource-limited) |
+| ES / Redis | Compose | Compose | Compose (resource-limited) |
 | ES security | disabled | enabled | enabled |
 | Secrets | `.env` | CI secrets | CI secrets |
 | Public URL | localhost | Tunnel (test) | Tunnel (prod) |
@@ -274,9 +273,8 @@ flowchart LR
 | App framework | Next.js (App Router) | 15.x |
 | LLM harness | Vercel AI SDK | latest |
 | Queue | BullMQ | latest |
-| Local LLM | Ollama · `llama3.2:3b` · `nomic-embed-text` | 0.24+ |
-| Hosted LLM | Anthropic (Claude), Groq | — |
-| OCR | Gemini (vision) | — |
+| Chat LLM | Anthropic (Claude) · Groq | — |
+| Embeddings + OCR | Gemini · `text-embedding-004` (768-dim) + vision | — |
 | RDBMS/Auth/Storage | Supabase (Postgres 15) | cloud |
 | Search/vectors | Elasticsearch | 8.15 |
 | Cache/queue store | Redis | 7 |
@@ -302,7 +300,7 @@ flowchart LR
 1. **Hybrid fusion method** — RRF vs weighted sum (decide in build; default RRF).
 2. **PII engine** — LLM-based vs a Presidio sidecar (start LLM-based; sidecar if precision needed).
 3. **Sensitivity taxonomy** — `public/internal/confidential` pending company **LLM policy rules** (→ `llm-governance.md`).
-4. **Sentiment model** — local (Ollama) vs hosted; default local for cost.
+4. **Sentiment model** — Groq (free) vs Anthropic; default Groq for cost.
 5. **Conversation memory depth** — per-thread window; long-term memory out of MVP scope.
 
 ADRs will live in `docs/adr/` as these are decided.

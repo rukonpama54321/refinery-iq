@@ -8,5 +8,5 @@ SDLC artifacts, produced in order. Each builds on the previous.
 | 01 | [PRD](01-prd.md) | ✅ draft for review |
 | 02 | [UX/UI & design system](02-design.md) | ⏳ pending |
 | 03 | [Software architecture](03-architecture.md) | ✅ draft for review |
-| 04 | [Database design](04-database.md) | ⏳ pending |
+| 04 | [Database design](04-database.md) | ✅ draft for review |
 | — | [LLM governance & policy rules](llm-governance.md) | ⏳ awaiting company policy rules |

@@ -10,16 +10,16 @@ This is the founding document. It frames *why* the project exists, *who* it serv
 
 **RefineryIQ** is an AI-first, role-aware enterprise assistant for an oil refinery. It is a single, chat-led front door to the things a refinery's people deal with every day: operating procedures, engineering documents, maintenance and safety records, HR policies, and operational data — answered in natural language, **with citations back to the source**, and **scoped to what each person is allowed to see**.
 
-It is built as a **tech-capability demo**: a believable product whose surface is simple (a chat box and a few dashboards) but whose internals deliberately exercise a broad, modern AI-platform stack — multi-agent orchestration, RAG, hybrid search, OCR, a multi-LLM harness mixing a local model with hosted APIs, token accounting, caching, RBAC, file versioning, PII handling, sentiment analysis, audit logging, and full CI/CD across environments.
+It is built as a **tech-capability demo**: a believable product whose surface is simple (a chat box and a few dashboards) but whose internals deliberately exercise a broad, modern AI-platform stack — multi-agent orchestration, RAG, hybrid search, OCR, a multi-LLM harness across hosted APIs (Claude, Groq), token accounting, caching, RBAC, file versioning, PII handling, sentiment analysis, audit logging, and full CI/CD across environments.
 
 ### The problem it dramatizes
-Refinery knowledge is scattered across PDFs, scanned forms, spreadsheets, intranet pages, and people's heads. Finding "the current revision of the SOP for restarting Unit 200" or "who approved last month's hot-work permit" means hunting through shared drives. Answers must be **trustworthy** (cited, current), **safe** (some data must never leave the building), and **need-to-know** (an operator and an HR manager see different things). RefineryIQ shows how an AI platform can deliver that responsibly.
+Refinery knowledge is scattered across PDFs, scanned forms, spreadsheets, intranet pages, and people's heads. Finding "the current revision of the SOP for restarting Unit 200" or "who approved last month's hot-work permit" means hunting through shared drives. Answers must be **trustworthy** (cited, current), **safe** (sensitive data is redacted and tightly routed before any API call), and **need-to-know** (an operator and an HR manager see different things). RefineryIQ shows how an AI platform can deliver that responsibly.
 
 ### Guiding principles
 - **AI-first, minimal UX.** The primary interface is conversation; dashboards and admin are supporting surfaces. Subtle "glimmer" affordances signal where AI is working — used only where they add clarity, never decoration.
 - **Trust by construction.** Every substantive answer carries citations. No-source means no confident claim.
-- **Right data, right place.** Sensitive/confidential content can be pinned to the **local LLM** and never sent to a 3rd-party API. Policy decides routing.
-- **Free / open-source first.** The demo runs on free tiers and OSS. Hosted LLM usage is limited to provided Anthropic credits and Groq's free tier; Gemini's free tier handles OCR.
+- **Right data, right place.** Sensitive/confidential content is redacted before egress and restricted to the **primary trusted provider** (Anthropic), never the secondary (Groq). Policy decides routing.
+- **Free / open-source first.** The demo runs on free tiers and OSS. Hosted LLM usage is limited to provided Anthropic credits and Groq's free tier; Gemini's free tier handles OCR **and embeddings**.
 - **Single-tenant, multi-department.** One organization; access is partitioned by department and role.
 
 ---
@@ -43,7 +43,7 @@ Roles map to a **RBAC** matrix (defined fully in the PRD/DB docs). Department sc
 
 ## 3. The product, in three surfaces
 
-1. **Chat (primary).** Streaming, citation-backed conversation. Users upload files mid-chat, ask across the corpus, and get answers routed to the right agent and the right model. Sensitive queries are visibly handled by the local model.
+1. **Chat (primary).** Streaming, citation-backed conversation. Users upload files mid-chat, ask across the corpus, and get answers routed to the right agent and the right model. Sensitive queries are redacted and routed to the primary trusted provider, with the model shown.
 2. **Dashboard.** Department-scoped overview: recent documents, token/cost usage, ingestion status, safety/ops highlights, sentiment trends on reports.
 3. **Admin Panel.** Users, roles & permissions, departments, document library (with **version history**), model/routing configuration, LLM-policy rules, audit log, and the **bug-reporting** backlog.
 
@@ -53,7 +53,7 @@ Roles map to a **RBAC** matrix (defined fully in the PRD/DB docs). Department sc
 
 A lightweight **orchestrator** routes each request to specialist agents, composed via the **Vercel AI SDK**. Architecture doc will formalize this; the concept:
 
-- **Router/Orchestrator** — classifies intent, enforces RBAC + LLM-policy, selects model (local vs hosted) and agent(s), assembles the final cited answer.
+- **Router/Orchestrator** — classifies intent, enforces RBAC + LLM-policy, selects provider (by sensitivity, then cost/latency) and agent(s), assembles the final cited answer.
 - **Document/RAG agent** — hybrid retrieval over the corpus, returns passages + citations.
 - **Operations agent** — operational data/records lookups and summaries.
 - **HR agent** — HR policy Q&A and drafting, with stricter PII handling.
@@ -74,8 +74,8 @@ How each required capability shows up as something demonstrable.
 | 2 | **Multi-agent architecture** | Orchestrator + 5 specialist agents (§4) |
 | 3 | **Indexing & search** | Elasticsearch hybrid: BM25 keyword + dense-vector kNN |
 | 4 | **OCR** | Gemini vision over scanned forms/permits/P&IDs during ingestion |
-| 5 | **Local LLM** | Ollama `llama3.2:3b` for private/offline-class queries |
-| 6 | **3rd-party LLM APIs** | Anthropic (Claude), Groq |
+| 5 | ~~**Local LLM**~~ | **Descoped** — dropped to avoid slow CPU-only inference; replaced by hosted Claude + Groq (see Decision log) |
+| 6 | **3rd-party LLM APIs** | Anthropic (Claude) + Groq (chat); Gemini (embeddings + OCR) |
 | 7 | **Multi-LLM harness** | Vercel AI SDK — one interface, provider routing & fallback |
 | 8 | **Token utilization** | Per-request/user/department token & cost metering, shown on dashboard |
 | 9 | **RAG** | Core answer path; retrieval feeds every substantive response |
@@ -104,7 +104,7 @@ How each required capability shows up as something demonstrable.
 **In scope**
 - Email auth (Supabase + Resend magic-link/OTP), single-tenant.
 - RBAC across the 6 roles and the departments in §2.
-- Chat with streaming, citations, and visible model routing (local vs hosted).
+- Chat with streaming, citations, and visible model routing (Claude vs Groq, by sensitivity/cost).
 - Document upload (chat + admin), ingestion (parse → OCR → PII scan → embed → index), and **version history**.
 - Hybrid search (Elasticsearch) powering the RAG/Document agent + at least one other specialist agent end-to-end (Safety or Operations).
 - Dashboard: token/cost usage + ingestion status + sentiment trend.
@@ -135,8 +135,8 @@ How each required capability shows up as something demonstrable.
 |---|---|
 | App stack | Next.js (App Router) + Node.js |
 | LLM harness | Vercel AI SDK |
-| Local LLM / embeddings | Ollama `llama3.2:3b` / `nomic-embed-text` |
-| Hosted LLMs | Anthropic (Claude), Groq; Gemini for OCR |
+| Chat LLMs | Anthropic (Claude) primary + Groq (fast/cheap + fallback) — **no local LLM** |
+| Embeddings / OCR | Gemini `text-embedding-004` (768-dim) / Gemini vision |
 | System-of-record | Supabase (Postgres + Auth + Storage) |
 | Search / vectors | Elasticsearch (hybrid BM25 + kNN) — *fallback noted below* |
 | Cache / queue | Redis (+ BullMQ worker) |
@@ -144,7 +144,7 @@ How each required capability shows up as something demonstrable.
 | Tenancy | Single-tenant, multi-department RBAC |
 | Infra | All services in Docker Compose on the demo box; Supabase managed (cloud); Cloudflare Tunnel for public URL |
 | Environments | local · test · prod |
-| Hardware | Single CPU-only machine; `llama3.2:3b` runs comfortably (<8 GB) |
+| Hardware | Single CPU-only machine (~16 GB); no local LLM, so RAM is dominated by Elasticsearch |
 | Demo data | **Confirmed:** synthetic refinery corpus (generated) |
 
 **Noted fallback:** if Elasticsearch's JVM overhead proves heavy for the demo box, swap to Supabase `pgvector` + Postgres full-text for hybrid RAG and drop the ES container. ES remains the plan per requirement.
@@ -156,7 +156,7 @@ How each required capability shows up as something demonstrable.
 1. ~~**Demo data**~~ — ✅ resolved: synthetic corpus (see PRD §8).
 2. **Company LLM policy rules** — to be supplied; they drive routing, refusals, PII rules, and audit (→ `docs/llm-governance.md`).
 3. **Timeline** — no fixed date assumed; pacing by SDLC phases.
-4. **4th LLM slot** — Groq confirmed as the second hosted provider? (assumed yes)
+4. ~~**4th LLM slot**~~ — ✅ resolved: Claude + Groq (chat), Gemini (embeddings/OCR); **local LLM dropped**.
 5. **"Active CI/CD RAG"** — confirm the interpretation in §5.
 
 ---
@@ -165,9 +165,9 @@ How each required capability shows up as something demonstrable.
 
 | Risk | Mitigation |
 |---|---|
-| CPU-only local LLM is slow | Route latency-sensitive chat to Groq/Claude; reserve local model for "private" flows to *prove* the capability |
+| No local LLM → all data goes to 3rd-party APIs | PII redacted before every egress; confidential content restricted to the primary trusted provider; "Local LLM" capability consciously descoped |
 | Elasticsearch RAM on the demo box | Cap JVM heap (512 MB–1 GB); pgvector fallback ready |
-| PII leaking to 3rd-party APIs | PII scan + redaction on egress; policy can force local-only routing |
+| PII leaking to 3rd-party APIs | PII scan + redaction on egress; policy restricts high-sensitivity content to the trusted provider |
 | Free-tier limits (Groq/Gemini/Supabase) | Caching + token budgets; synthetic-data sizes kept modest |
 | Scope creep across 24 capabilities | Balanced MVP: every capability demonstrably present, depth kept pragmatic |
 

@@ -14,7 +14,7 @@ RefineryIQ is a single-tenant, AI-first enterprise assistant for a refinery. Thi
 **Product goals**
 - G1 — Let any authorized user get **accurate, cited** answers from the refinery's documents and records in natural language.
 - G2 — Enforce **role- and department-scoped** access on every answer.
-- G3 — Demonstrate **responsible AI routing**: sensitive content stays on the **local** model; the rest uses hosted models chosen for cost/latency.
+- G3 — Demonstrate **responsible AI routing**: sensitivity drives PII redaction and provider choice (confidential → primary trusted provider only, never the secondary); the rest is routed by cost/latency.
 - G4 — Keep the corpus **continuously current** as documents are uploaded/revised.
 - G5 — Be **observable and governable**: token/cost metering, audit trail, in-app bug reporting.
 
@@ -67,7 +67,7 @@ Per Brainstorm §2: **Operator** (Operations), **Reliability Engineer** (Mainten
 ### 4.2 Chat (primary surface)
 - **FR-CHAT-1** Streaming responses (token-by-token) in a conversational thread.
 - **FR-CHAT-2** Every substantive answer includes **inline citations** linking to source passages/documents (see 4.4).
-- **FR-CHAT-3** The UI shows **which model answered** (e.g., "local · llama3.2:3b" vs "Claude" / "Groq") and a subtle "AI working" glimmer during retrieval/generation.
+- **FR-CHAT-3** The UI shows **which model answered** (e.g., "Claude" vs "Groq") and a subtle "AI working" glimmer during retrieval/generation.
 - **FR-CHAT-4** Users can **upload a file mid-chat**; it is ingested and immediately queryable in that thread.
 - **FR-CHAT-5** Conversation history is persisted per user and scoped to their access.
 - **FR-CHAT-6** If retrieval returns no permitted sources, the assistant says so and does **not** fabricate an answer.
@@ -76,7 +76,7 @@ Per Brainstorm §2: **Operator** (Operations), **Reliability Engineer** (Mainten
 - **FR-DOC-1** Accept PDF, DOCX, XLSX, CSV, TXT, and image files (PNG/JPG/TIFF).
 - **FR-DOC-2** Pipeline (async worker): **parse → OCR (if image/scanned) → PII scan → chunk → embed → index**.
 - **FR-DOC-3** **OCR** of scanned/image content via **Gemini** vision.
-- **FR-DOC-4** Embeddings via Ollama `nomic-embed-text`; chunks indexed in Elasticsearch.
+- **FR-DOC-4** Embeddings via **Gemini `text-embedding-004`** (768-dim); chunks indexed in Elasticsearch.
 - **FR-DOC-5** Each document is tagged with `department`, `sensitivity`, uploader, and timestamps.
 - **FR-DOC-6** Ingestion status (queued/processing/indexed/failed) is visible to the uploader and on the dashboard.
 
@@ -98,9 +98,9 @@ Per Brainstorm §2: **Operator** (Operations), **Reliability Engineer** (Mainten
 - **FR-AGENT-3** Agents share common tools: retrieval, PII scan, sentiment, token-metered LLM calls.
 
 ### 4.7 Multi-LLM harness & routing
-- **FR-LLM-1** A single harness (Vercel AI SDK) calls Ollama (local), Anthropic, and Groq through one interface.
-- **FR-LLM-2** Routing chooses a model by **sensitivity** (policy can force local-only), then cost/latency.
-- **FR-LLM-3** Provider **fallback**: if a hosted provider errors/limits, fall back per policy (incl. to local).
+- **FR-LLM-1** A single harness (Vercel AI SDK) calls Anthropic and Groq through one interface for chat; Gemini provides embeddings + OCR.
+- **FR-LLM-2** Routing chooses a provider by **sensitivity** (confidential → primary trusted provider only, never the secondary), then cost/latency.
+- **FR-LLM-3** Provider **fallback**: if a provider errors/limits, fall back to the next provider **allowed by policy** (never one disallowed by sensitivity).
 - **FR-LLM-4** Admin can view/edit routing rules and default models.
 
 ### 4.8 Token utilization, optimization & caching
@@ -112,7 +112,7 @@ Per Brainstorm §2: **Operator** (Operations), **Reliability Engineer** (Mainten
 ### 4.9 PII handling
 - **FR-PII-1** Detect PII (names, contact info, IDs) during ingestion and tag affected chunks.
 - **FR-PII-2** Before sending content to a **3rd-party** API, redact/ mask PII per policy.
-- **FR-PII-3** Policy may classify some content as local-only, blocking 3rd-party egress entirely.
+- **FR-PII-3** Policy may restrict high-sensitivity content to the primary trusted provider and require maximum redaction before egress.
 
 ### 4.10 Sentiment analysis
 - **FR-SENT-1** Score sentiment on safety reports, HR feedback, and bug reports.
@@ -147,7 +147,7 @@ Per Brainstorm §2: **Operator** (Operations), **Reliability Engineer** (Mainten
 - **NFR-SEC-2** Secrets via env/secret store; never committed. Distinct config per environment.
 - **NFR-SEC-3** Environment isolation: local · test · prod with separate data and keys.
 - **NFR-PRIV-1** PII never leaves to 3rd-party APIs except as permitted by policy (ties to FR-PII-*).
-- **NFR-PERF-1** First streamed token within a few seconds for hosted models; local-model latency is acceptable for the demo and clearly indicated in the UI.
+- **NFR-PERF-1** First streamed token within a few seconds; the answering model is clearly indicated in the UI.
 - **NFR-SCALE-1** Stateless web tier + async worker off a Redis queue; services containerized and independently scalable.
 - **NFR-OBS-1** Logs, LLM traces, and token/cost metrics are queryable for the demo.
 - **NFR-COST-1** Operate within free tiers / provided credits; caching + routing keep hosted spend low.
@@ -160,12 +160,12 @@ Per Brainstorm §2: **Operator** (Operations), **Reliability Engineer** (Mainten
 
 - **US-1 (Operator, RAG+citation):** *As an Operator, I ask for the current Unit 200 startup SOP and get a cited summary.*
   **AC:** streamed answer; citations resolve to the **current** version; no Maintenance/HR docs leak in; model shown.
-- **US-2 (Safety, sensitivity routing):** *As a Safety Officer, I ask about a sensitive incident; it's answered locally.*
-  **AC:** UI shows "local · llama3.2:3b"; audit log records local-only routing; no 3rd-party egress.
+- **US-2 (Safety, sensitivity routing):** *As a Safety Officer, I ask about a sensitive (confidential) incident.*
+  **AC:** PII redacted before egress; routed to the primary trusted provider (Anthropic), never the secondary; UI shows the model; audit log records the routing reason.
 - **US-3 (Engineer, OCR + versions):** *As an Engineer, I upload a scanned maintenance form; it becomes searchable; a re-upload supersedes it.*
   **AC:** OCR text indexed; ingestion status visible; new version becomes current; answers shift to the new version automatically.
 - **US-4 (HR, PII):** *As an HR Manager, I ask about a policy referencing employees.*
-  **AC:** PII is redacted before any hosted call (or routed local); citations still resolve.
+  **AC:** PII is redacted before any API call; citations still resolve.
 - **US-5 (Manager, dashboard):** *As a Plant Manager, I view cross-department token/cost usage and sentiment trend.*
   **AC:** aggregates across departments; numbers reconcile with logged LLM calls.
 - **US-6 (Admin, governance):** *As an Admin, I create a user, set a routing rule, and review the audit log + a filed bug.*
@@ -200,7 +200,7 @@ Generated content for "Meridian Refinery" (confirmed: synthetic):
 |---|---|
 | Cited answers | 100% of substantive answers carry resolvable citations |
 | RBAC correctness | 0 cross-scope leaks across the US-1..US-7 walkthrough |
-| Sensitivity routing | sensitive queries answered local-only, verifiable in audit |
+| Sensitivity routing | confidential queries redacted + routed to primary provider only, verifiable in audit |
 | Index currency | new/updated doc reflected in answers without manual re-index |
 | One-command bring-up | `docker compose up` → all services healthy |
 | CI | green on `main` (lint + tests + build) |
@@ -219,7 +219,7 @@ Generated content for "Meridian Refinery" (confirmed: synthetic):
 ## 11. Open items
 
 1. Company LLM policy rules (→ governance doc; may add/extend FR-LLM-*, FR-PII-*).
-2. Confirm Groq as the second hosted provider (assumed yes).
+2. ~~Confirm Groq as the second provider~~ — ✅ resolved: Claude + Groq for chat; Gemini for embeddings/OCR; no local LLM.
 3. Exact sensitivity taxonomy (e.g., `public/internal/confidential`) — to finalize with policy rules.
 
 ---
