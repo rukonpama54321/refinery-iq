@@ -101,7 +101,7 @@ export async function POST(req: NextRequest) {
       storage_path: storagePath,
       mime_type:    file.type,
       byte_size:    buf.length,
-      status:       "pending",
+      status:       "queued",
     })
     .select("id")
     .single();
