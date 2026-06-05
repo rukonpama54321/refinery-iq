@@ -29,6 +29,16 @@ export function hasSupabaseEnv(): boolean {
   );
 }
 
+/** True when Gemini embeddings are configured (enables vector search in RAG). */
+export function hasGeminiEnv(): boolean {
+  return !!process.env.GEMINI_API_KEY;
+}
+
+/** True when Groq chat is configured. */
+export function hasGroqEnv(): boolean {
+  return !!process.env.GROQ_API_KEY;
+}
+
 /** Server-side env (throws a clear error if required keys are missing). */
 export function getServerEnv(): ServerEnv {
   const parsed = serverSchema.safeParse(process.env);

@@ -1,6 +1,6 @@
 # Progress & Resume Notes
 
-> **Last session:** 2026-06-05 · **Next:** apply the auth DB migration + wire Resend, then verify login end-to-end (still the auth blocker); then wire Groq into the now-built chat screen. See "Finish auth" below.
+> **Last session:** 2026-06-05 · **Next:** start Elasticsearch + Redis (`docker compose up -d`), add `GEMINI_API_KEY`, run `node scripts/ingest-hcu.mjs`, then verify end-to-end RAG chat. See "RAG phase" below.
 > Single place to pick up where we left off. (For the locked design, see the SDLC docs + ADRs.)
 
 ## Where we are
@@ -14,7 +14,8 @@ Planning is **complete and locked**; **development is underway** — scaffold do
 | App scaffold | ✅ Next 16.2.7, `npm run build` passes |
 | Auth scaffold | ✅ built + committed + pushed (`28d7c1d`); gate verified live; **DB migration not yet applied**, email not wired |
 | Design system port | ✅ icons + primitives ported to typed `components/` (`icons.tsx`, `ui.tsx`) |
-| Chat screen | ⏳ UI ported + streaming wired to `/api/chat`; **canned fallback works pre-keys**, real Groq pending `GROQ_API_KEY`; RAG citations later |
+| Chat screen | ✅ streaming live with real Groq (`GROQ_API_KEY` set + verified); RAG-augmented when ES is up |
+| RAG pipeline | ⏳ code complete + migration applied; **pending**: start Docker (ES+Redis), add `GEMINI_API_KEY`, run ingest script |
 
 ## Key decisions (so they're not re-litigated)
 - **Stack:** Next.js 16 (App Router, TS; bumped from 15 per ADR-0005) + Node worker · Vercel AI SDK · Supabase (Postgres/Auth/Storage) · Elasticsearch (hybrid BM25+vector) · Redis (cache/queue) · Docker · Cloudflare Tunnel.
@@ -73,15 +74,28 @@ Provisioned programmatically with a Supabase **personal access token** (`sbp_…
 1. ✅ Foundation (done) → verify `npm run dev` renders the landing at http://localhost:3000.
 2. ✅ **Auth:** Supabase client + magic-link/OTP; `app_users` + tiers/departments. Scaffold built, **migration applied, admin provisioned, e2e login verified** (see "Finish auth"). Optional Resend email pending.
 3. ✅ **Design system port:** `UI/refineiq/{ui,icons}.jsx` → typed `components/ui.tsx` + `components/icons.tsx`. (More screens reuse these next.)
-4. ⏳ **Chat screen:** ported `screen_chat.jsx` → `components/chat/chat-screen.tsx`; streaming via `/api/chat` (Vercel AI SDK + Groq) with a canned fallback; thinking-skeleton glimmer. **Remaining:** set `GROQ_API_KEY` for real answers + sign in (needs migration) to exercise it live; RAG citations come in step 5.
-5. **RAG:** ingest HCU manual (Gemini embeddings → Elasticsearch); hybrid retrieval + citations.
+4. ✅ **Chat screen:** streaming with real Groq (GROQ_API_KEY verified). RAG retrieval wired — degrades gracefully when ES is offline.
+5. ⏳ **RAG:** code complete. **To activate:** (a) start Docker + ES/Redis, (b) add `GEMINI_API_KEY`, (c) run `node scripts/ingest-hcu.mjs`. See "RAG phase" below.
 6. **Worker:** BullMQ ingestion pipeline (parse → OCR(Gemini) → PII → embed → index); add `worker` service to compose.
 7. **Versioning demo:** ingest HR v1 then v2; "current" answers reflect v2.
 8. Dashboard, Admin (users/docs/depts/logs/settings), **bug-reporting** (FR-BUG), governance enforcement (routing/PII/audit), CI/CD.
 
+## RAG phase — what was built (code complete, pending Docker + Gemini key)
+- **`infra/supabase/migrations/0002_rag_schema.sql`** — new enums (`sensitivity_t`, `doc_status_t`, `msg_role_t`, `model_t`), `documents`, `document_versions`, `conversations`, `messages`, `citations`, `token_usage`, `audit_events` + RLS. **Applied to Supabase.**
+- **`lib/elasticsearch/client.ts`** — singleton ES client; `INDEX_NAME = chunks_local`.
+- **`lib/elasticsearch/index.ts`** — `ensureIndex()` (BM25 + 768-dim `dense_vector` kNN mapping), `indexChunks()`, `markSuperseded()`.
+- **`lib/rag/chunk.ts`** — structure-aware chunker (~600 tokens, ~100-token overlap, location labels from page / headings).
+- **`lib/rag/embed.ts`** — `embedTexts()` + `embedQuery()` via `@ai-sdk/google` `embedMany`; batched (20/req) with rate-limit delay.
+- **`lib/rag/retrieve.ts`** — hybrid RRF retrieval (BM25 + kNN), RBAC filter before ranking, BM25-only fallback when `GEMINI_API_KEY` absent, `isEsAvailable()` ping.
+- **`scripts/ingest-hcu.mjs`** — parse HCU PDF → chunk → embed → ES index → update Supabase version status. Idempotent, degrades to zero-vector BM25 without Gemini key.
+- **`app/api/chat/route.ts`** — now RAG-augmented: resolves session → permitted depts → retrieves top-5 chunks → injects as context into Groq system prompt → streams answer with real citations in `x-chat-meta`.
+
 ## API keys (local `.env`, never commit)
-- ✅ **Supabase:** `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` (publishable), `SUPABASE_SERVICE_ROLE_KEY` (secret — **rotate**). Wired + verified.
-- ⏳ **Still needed:** `RESEND_API_KEY` + `EMAIL_FROM` (for magic-link email), `GROQ_API_KEY`, `GEMINI_API_KEY` (chat/RAG phases). All free tiers. Elasticsearch + Redis need none (Docker).
+- ✅ **Supabase:** wired + verified + migration applied.
+- ✅ **Groq:** `GROQ_API_KEY` set + verified (Llama 3.3 70B streaming live).
+- ⏳ **Gemini:** `GEMINI_API_KEY` needed for vector embeddings (free at aistudio.google.com/apikey). Without it: BM25 text search still works.
+- ⏳ **Resend:** `RESEND_API_KEY` + `EMAIL_FROM` — optional, for emailed magic links.
+- ✅ **Elasticsearch + Redis** — Docker Compose. Need Docker Desktop running.
 
 ## How to run (current state)
 ```powershell
