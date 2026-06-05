@@ -1,9 +1,16 @@
 "use client";
 
 import { useActionState } from "react";
+import { useSearchParams } from "next/navigation";
 import { sendMagicLink, type LoginState } from "./actions";
 
 const initial: LoginState = { ok: false };
+
+const URL_ERRORS: Record<string, string> = {
+  link_invalid: "That sign-in link has expired or was already used. Request a new one below.",
+  link_expired: "That sign-in link has expired. Request a new one below.",
+  unauthorized: "You don't have access to this page.",
+};
 
 function Logo() {
   return (
@@ -21,6 +28,8 @@ function Logo() {
 
 export default function LoginPage() {
   const [state, formAction, pending] = useActionState(sendMagicLink, initial);
+  const params = useSearchParams();
+  const urlError = params.get("error") ? (URL_ERRORS[params.get("error")!] ?? "Something went wrong. Please try again.") : null;
 
   return (
     <main style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
@@ -32,6 +41,12 @@ export default function LoginPage() {
             <div style={{ fontSize: 13, color: "var(--text-dim)" }}>Numaligarh Refinery Ltd. · Operations Intelligence</div>
           </div>
         </div>
+
+        {urlError && (
+          <div className="fade-rise" style={{ marginBottom: 16, padding: "10px 14px", borderRadius: "var(--r-md)", background: "rgba(239,68,68,0.10)", border: "1px solid rgba(239,68,68,0.25)", fontSize: 13, color: "var(--red)", lineHeight: 1.5 }}>
+            {urlError}
+          </div>
+        )}
 
         {state.ok ? (
           <div className="fade-rise" style={{ fontSize: 14, color: "var(--text-dim)", lineHeight: 1.55 }}>

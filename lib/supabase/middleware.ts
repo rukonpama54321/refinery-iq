@@ -51,5 +51,10 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
     return NextResponse.redirect(url);
   }
 
+  // Authenticated users who land on "/" go straight to chat.
+  if (user && request.nextUrl.pathname === "/") {
+    return NextResponse.redirect(new URL("/chat", request.url));
+  }
+
   return response;
 }

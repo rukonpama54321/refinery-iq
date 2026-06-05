@@ -51,7 +51,7 @@ export async function sendMagicLink(
   const { error } = await supabase.auth.signInWithOtp({
     email,
     options: {
-      emailRedirectTo: `${env.APP_URL}/auth/confirm`,
+      emailRedirectTo: `${env.APP_URL}/auth/confirm?next=/chat`,
       // Single-tenant demo: users are provisioned by an admin, so don't
       // auto-create an auth user on unknown emails.
       shouldCreateUser: false,
