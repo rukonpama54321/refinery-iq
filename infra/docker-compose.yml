@@ -1,8 +1,7 @@
 name: numaligarh-refinery-iq
 
 # Local stack. Supabase is managed (cloud, free). No Ollama / local LLM (ADR-0004):
-# chat = Groq + Gemini APIs, embeddings + OCR = Gemini. The `worker` service is
-# added once the ingestion pipeline is implemented.
+# chat = Groq + Gemini APIs, embeddings + OCR = Gemini.
 
 services:
   web:
@@ -33,6 +32,18 @@ services:
       interval: 10s
       timeout: 5s
       retries: 12
+
+  worker:
+    build: { context: .., dockerfile: infra/Dockerfile, target: runner }
+    command: node -e "require('./worker/index.js')"
+    env_file: ../.env
+    environment:
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      elasticsearch: { condition: service_healthy }
+      redis: { condition: service_started }
+    restart: unless-stopped
 
   redis:
     image: redis:7-alpine

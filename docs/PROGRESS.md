@@ -75,8 +75,8 @@ Provisioned programmatically with a Supabase **personal access token** (`sbp_…
 2. ✅ **Auth:** Supabase client + magic-link/OTP; `app_users` + tiers/departments. Scaffold built, **migration applied, admin provisioned, e2e login verified** (see "Finish auth"). Optional Resend email pending.
 3. ✅ **Design system port:** `UI/refineiq/{ui,icons}.jsx` → typed `components/ui.tsx` + `components/icons.tsx`. (More screens reuse these next.)
 4. ✅ **Chat screen:** streaming with real Groq (GROQ_API_KEY verified). RAG retrieval wired — degrades gracefully when ES is offline.
-5. ✅ **RAG:** Docker + ES running; all 3 documents ingested (59 chunks); BM25 retrieval live. Add `GEMINI_API_KEY` + `npm run ingest` for full hybrid kNN.
-6. **Worker:** BullMQ ingestion pipeline (parse → OCR(Gemini) → PII → embed → index); add `worker` service to compose.
+5. ✅ **RAG:** 59 chunks live (Gemini `gemini-embedding-001` 768-dim, hybrid BM25+kNN). Full flow verified.
+6. ✅ **Worker:** BullMQ pipeline built — `lib/worker/queue.ts`, `worker/processor.ts`, `worker/index.ts`, `app/api/upload`, `app/api/ingest`, `app/api/ingest/[jobId]`. Worker service added to `docker-compose.yml`.
 7. **Versioning demo:** ingest HR v1 then v2; "current" answers reflect v2.
 8. Dashboard, Admin (users/docs/depts/logs/settings), **bug-reporting** (FR-BUG), governance enforcement (routing/PII/audit), CI/CD.
 
