@@ -1,5 +1,5 @@
-// Gemini text-embedding-004 via Vercel AI SDK (embedMany).
-// 768-dim vectors, free tier. ADR-0004.
+// Gemini gemini-embedding-001 via Vercel AI SDK (embedMany).
+// Truncated to 768-dim via outputDimensionality (Matryoshka), free tier. ADR-0004.
 import { embedMany, embed } from "ai";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 
@@ -9,7 +9,10 @@ function googleClient() {
   return createGoogleGenerativeAI({ apiKey: key });
 }
 
-const MODEL_ID = "text-embedding-004";
+const MODEL_ID = "gemini-embedding-001";
+// text-embedding-004 was retired; gemini-embedding-001 replaces it (3072-dim native,
+// truncated to 768 via Matryoshka outputDimensionality to match the existing ES index).
+const EMBED_DIMS = 768;
 
 // Gemini free tier: 100 requests/min. Batch in groups of 20 with a small delay.
 const BATCH = 20;
@@ -19,7 +22,7 @@ const DELAY_MS = 700;
 export async function embedTexts(texts: string[]): Promise<number[][]> {
   if (texts.length === 0) return [];
   const google = googleClient();
-  const model = google.textEmbeddingModel(MODEL_ID);
+  const model = google.textEmbeddingModel(MODEL_ID, { outputDimensionality: EMBED_DIMS });
   const all: number[][] = [];
 
   for (let i = 0; i < texts.length; i += BATCH) {
@@ -36,7 +39,7 @@ export async function embedTexts(texts: string[]): Promise<number[][]> {
 /** Embed a single query string for retrieval. */
 export async function embedQuery(text: string): Promise<number[]> {
   const google = googleClient();
-  const model = google.textEmbeddingModel(MODEL_ID);
+  const model = google.textEmbeddingModel(MODEL_ID, { outputDimensionality: EMBED_DIMS });
   const { embedding } = await embed({ model, value: text });
   return embedding;
 }

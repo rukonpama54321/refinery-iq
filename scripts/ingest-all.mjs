@@ -113,7 +113,7 @@ async function embedTexts(texts) {
   if (!hasGemini) return null; // null = omit embedding field (BM25-only)
   const BATCH = 20, DELAY = 700;
   const google = createGoogleGenerativeAI({ apiKey: env.GEMINI_API_KEY });
-  const model  = google.textEmbeddingModel("text-embedding-004");
+  const model  = google.textEmbeddingModel("gemini-embedding-001", { outputDimensionality: 768 });
   const all = [];
   for (let i = 0; i < texts.length; i += BATCH) {
     const { embeddings } = await embedMany({ model, values: texts.slice(i, i + BATCH) });
