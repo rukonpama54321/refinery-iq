@@ -1,10 +1,10 @@
 # Progress & Resume Notes
 
-> **Last session:** 2026-06-05 · **Next:** apply the auth DB migration + wire Resend, then verify login end-to-end. See "Finish auth" below.
+> **Last session:** 2026-06-05 · **Next:** apply the auth DB migration + wire Resend, then verify login end-to-end (still the auth blocker); then wire Groq into the now-built chat screen. See "Finish auth" below.
 > Single place to pick up where we left off. (For the locked design, see the SDLC docs + ADRs.)
 
 ## Where we are
-Planning is **complete and locked**; **development is underway** — scaffold done, **auth scaffold built** (uncommitted, pending end-to-end verification).
+Planning is **complete and locked**; **development is underway** — scaffold done, **auth scaffold built + committed + pushed**, **chat screen + streaming API built** (design system ported to typed components).
 
 | Area | State |
 |---|---|
@@ -12,7 +12,9 @@ Planning is **complete and locked**; **development is underway** — scaffold do
 | LLM governance | ✅ drafted (`docs/llm-governance.md`) |
 | ADRs | 0001 (arch), 0002 (3 tiers/6 depts), 0003 (real-doc corpus), 0004 (Groq+Gemini, no Anthropic), 0005 (Next 16) |
 | App scaffold | ✅ Next 16.2.7, `npm run build` passes |
-| Auth scaffold | ⏳ built + builds clean; gate verified live; **DB migration not yet applied**, email not wired (uncommitted) |
+| Auth scaffold | ✅ built + committed + pushed (`28d7c1d`); gate verified live; **DB migration not yet applied**, email not wired |
+| Design system port | ✅ icons + primitives ported to typed `components/` (`icons.tsx`, `ui.tsx`) |
+| Chat screen | ⏳ UI ported + streaming wired to `/api/chat`; **canned fallback works pre-keys**, real Groq pending `GROQ_API_KEY`; RAG citations later |
 
 ## Key decisions (so they're not re-litigated)
 - **Stack:** Next.js 16 (App Router, TS; bumped from 15 per ADR-0005) + Node worker · Vercel AI SDK · Supabase (Postgres/Auth/Storage) · Elasticsearch (hybrid BM25+vector) · Redis (cache/queue) · Docker · Cloudflare Tunnel.
@@ -42,24 +44,36 @@ Security checkpoint **committed** as `33e58db` (Next 16 bump + ADR-0005). The au
 
 > ⚠️ **DB doc bug:** `docs/04-database.md:85` sets `app_users.role` default to `'operator'`, which is **not** a `role_t` value — that DDL won't run. Migration uses `default 'end_user'`. Needs a doc fix (typo, no ADR).
 
+## What was built THIS session — Chat screen + streaming (committed/pushed)
+Auth scaffold committed (`28d7c1d`) and pushed to `origin/main`. Then built the chat phase (Resume plan steps 3–4):
+- **Design system port (step 3):** `components/icons.tsx` (typed icon set + `NamedIcon`/`ICONMAP`) and `components/ui.tsx` (typed primitives: `RoleBadge`, `StatusChip`, `Avatar`, `Citation`, `ModelBadge`, `PanelHead`, `GlowButton`, `renderRich`) — ported from `UI/refineiq/{icons,ui}.jsx`.
+- **Chat demo data:** `lib/chat/demo.ts` — `CHAT_DEPARTMENTS` (mirrors rbac), `SUGGESTIONS`, `SAMPLE_THREAD`, keyword-matched canned answers + `matchAnswer()` (public-safe "Northgate Refining" content).
+- **Streaming API:** `app/api/chat/route.ts` — POST streams plain UTF-8 text. **With `GROQ_API_KEY`:** real `streamText` via `@ai-sdk/groq` (Llama 3.3 70B). **Without keys:** streams a keyword-matched canned answer. Answer metadata (model + citations) is sent up-front in a base64 `x-chat-meta` header the client reads before consuming the body.
+- **Chat UI:** `components/chat/chat-screen.tsx` (client) — ported `screen_chat.jsx`, reads the fetch stream live (thinking skeleton → glimmer/cursor → sources + model footer), AbortController stop button, department selector limited to the user's `permittedDepartments`.
+- **Page + nav:** `app/chat/page.tsx` (gated server page; demo Admin account pre-keys, real `requireUser()` once keyed) with a slim app rail; `app/page.tsx` now has an "Open chat" link.
+- **Verified:** `tsc --noEmit` clean, `next build` passes (`/chat` + `/api/chat` registered), dev server: `/login` 200, `/chat` + `/api/chat` correctly gated → `/login` when unauthenticated. End-to-end chat streaming still needs an authenticated session (blocked on the same migration step below).
+
 ## ⚠️ Open items
 1. ✅ **Next.js bumped** 15.1.6 → **16.2.7** (clears critical CVE-2025-66478); `npm run build` passes. ADR-0005.
 2. ⏳ **`npm audit`:** critical resolved; **9 moderate/low remain**, all transitive via the Vercel AI SDK (`@ai-sdk/*` → `ai`) + one `postcss` advisory inside Next. Fixing the AI-SDK ones needs `ai` v4 → v6 (breaking) — **decision: stay on v4 for now** (ADR-0004 unchanged), revisit before shipping. Don't run `npm audit fix --force` (it would downgrade Next / jump the AI SDK).
 3. ✅ Local **`.env`** created (git-ignored). Supabase URL + **publishable** key wired and verified (auth endpoint 200). Secret key present locally.
 
-## Finish auth (do these next)
-1. **Apply the migration** — open Supabase → **SQL Editor**, paste `infra/supabase/migrations/0001_auth_init.sql`, Run. (DDL can't go through the API keys.)
-2. **Create the first user + bootstrap admin** — Supabase → Auth → Users → *Add user* (auto-confirm), then run the bootstrap `insert` at the bottom of the migration (set role `admin`).
-3. **Email delivery** — add `RESEND_API_KEY` + `EMAIL_FROM`, and set Resend as SMTP in Supabase → Auth → SMTP (the default sender only mails project members and is rate-limited).
-4. **End-to-end login test**, then **commit** the auth scaffold.
-5. ⚠️ **Rotate the Supabase secret key** — it was pasted in chat; treat as compromised before anything goes public.
-   - **Heads-up:** the project's Data API currently rejects the new `sb_secret_` key (`PGRST301: Expected 3 parts in JWT`) and admin API returns 403 — legacy-JWT mode. Doesn't block app login (PostgREST uses the user's session JWT at runtime), but server-side admin-via-REST won't work until the new key system is enabled.
+## Finish auth — ✅ DONE (provisioned via Management API, 2026-06-05)
+Provisioned programmatically with a Supabase **personal access token** (`sbp_…`) + the secret key (admin API). The earlier legacy-JWT 403 is **resolved** — admin + REST + Management APIs all return 200 now.
+1. ✅ **Migration applied** — `0001_auth_init.sql` run via Management API `database/query` (enums, departments ×6, app_users, RLS, is_admin()).
+2. ✅ **First admin provisioned** — `auth.users` created (auto-confirmed) for `rupamborah54321@gmail.com`; `app_users` row upserted (`role=admin`, `home_dept=operations`, active).
+3. ✅ **Auth URLs configured** — `site_url=http://localhost:3000`, redirect allowlist includes `/auth/confirm`.
+4. ✅ **End-to-end login verified** — magic link (token_hash flow) → `/auth/confirm` 307 → `/chat` 200 as authenticated admin. (Used `verifyOtp`; PKCE `?code=` path needs a browser code-verifier, so token_hash is the right flow for admin-generated links.)
+5. ⏳ **Email delivery (Resend)** — still optional: add `RESEND_API_KEY` + `EMAIL_FROM` + Resend SMTP if you want the in-app "Send sign-in link" form to actually email links. Until then, generate links via admin API / dashboard.
+6. ⚠️ **ROTATE NOW** — the `sb_secret_` key **and** the `sbp_` personal access token were both shared in chat; rotate both (Supabase → Settings → API keys, and account → Access Tokens) before anything goes public.
+
+> Login error UX: `app/(auth)/login/actions.ts` now maps raw Supabase errors (e.g. "Signups not allowed for otp") to friendly copy via `friendlyAuthError()`.
 
 ## Resume plan (build order)
 1. ✅ Foundation (done) → verify `npm run dev` renders the landing at http://localhost:3000.
-2. ⏳ **Auth:** Supabase client + magic-link/OTP; `app_users` + tiers/departments. **Scaffold built + gate verified live**; remaining = apply migration, wire Resend, e2e test (see "Finish auth").
-3. **Design system port:** `UI/refineiq/ui.jsx` primitives → `components/` (typed React); icons.
-4. **Chat screen:** port `screen_chat.jsx`; streaming via Vercel AI SDK (Groq); thinking-skeleton glimmer.
+2. ✅ **Auth:** Supabase client + magic-link/OTP; `app_users` + tiers/departments. Scaffold built, **migration applied, admin provisioned, e2e login verified** (see "Finish auth"). Optional Resend email pending.
+3. ✅ **Design system port:** `UI/refineiq/{ui,icons}.jsx` → typed `components/ui.tsx` + `components/icons.tsx`. (More screens reuse these next.)
+4. ⏳ **Chat screen:** ported `screen_chat.jsx` → `components/chat/chat-screen.tsx`; streaming via `/api/chat` (Vercel AI SDK + Groq) with a canned fallback; thinking-skeleton glimmer. **Remaining:** set `GROQ_API_KEY` for real answers + sign in (needs migration) to exercise it live; RAG citations come in step 5.
 5. **RAG:** ingest HCU manual (Gemini embeddings → Elasticsearch); hybrid retrieval + citations.
 6. **Worker:** BullMQ ingestion pipeline (parse → OCR(Gemini) → PII → embed → index); add `worker` service to compose.
 7. **Versioning demo:** ingest HR v1 then v2; "current" answers reflect v2.

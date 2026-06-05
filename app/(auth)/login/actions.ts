@@ -12,6 +12,25 @@ export interface LoginState {
 
 const emailSchema = z.string().trim().toLowerCase().email("Enter a valid email address.");
 
+/**
+ * Map raw Supabase auth errors to user-facing copy. The single-tenant flow uses
+ * `shouldCreateUser: false`, so an unknown email surfaces as "Signups not allowed
+ * for otp" — which we translate to a provisioning hint instead of leaking internals.
+ */
+function friendlyAuthError(message: string): string {
+  const m = message.toLowerCase();
+  if (m.includes("signups not allowed")) {
+    return "That email isn’t set up for access yet. Accounts are provisioned by your administrator — ask them to add you.";
+  }
+  if (m.includes("rate limit") || m.includes("too many") || m.includes("only request")) {
+    return "Too many sign-in attempts. Wait a minute and try again.";
+  }
+  if (m.includes("email") && m.includes("invalid")) {
+    return "Enter a valid email address.";
+  }
+  return "Couldn’t send the sign-in link. Please try again, or contact your administrator.";
+}
+
 /** Send a passwordless magic-link / OTP email (delivered via Supabase → Resend SMTP). */
 export async function sendMagicLink(
   _prev: LoginState,
@@ -39,6 +58,6 @@ export async function sendMagicLink(
     },
   });
 
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: friendlyAuthError(error.message) };
   return { ok: true, email };
 }

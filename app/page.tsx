@@ -2,6 +2,7 @@
 // - Before Supabase keys exist: renders the dev scaffold (so `npm run dev` works).
 // - Once configured: requireUser() gates access and greets the signed-in user.
 //   Replaced by the real dashboard/chat as those land.
+import Link from "next/link";
 import { hasSupabaseEnv } from "@/lib/env";
 import { requireUser } from "@/lib/auth/user";
 import { DEPARTMENT_LABELS, ROLE_LABELS } from "@/lib/auth/rbac";
@@ -9,13 +10,13 @@ import { SignOutButton } from "@/components/sign-out-button";
 
 const READY = [
   "Next.js 16 App Router + TypeScript",
-  "Design system ported from UI/ prototype (tokens, glimmer, glass)",
-  "Geist / Geist Mono fonts",
+  "Design system ported to typed components (icons + primitives)",
   "Auth: Supabase magic-link + RBAC (3 tiers × 6 departments)",
+  "Chat UI + live streaming (Groq, with canned fallback)",
   "Docker stack: Elasticsearch + Redis (infra/docker-compose.yml)",
 ];
 const NEXT = [
-  "Chat UI + streaming (port from prototype)",
+  "Wire GROQ_API_KEY for real chat answers",
   "RAG over the HCU manual (Groq + Gemini, Elasticsearch)",
   "Admin / dashboard / versioning",
 ];
@@ -69,6 +70,19 @@ export default async function Home() {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 22 }}>
           <Section title="Ready" items={READY} tint="var(--green)" />
           <Section title="Next" items={NEXT} tint="var(--a3)" />
+        </div>
+
+        <div style={{ marginTop: 22 }}>
+          <Link
+            href="/chat"
+            style={{
+              display: "inline-flex", alignItems: "center", gap: 9, padding: "11px 20px", borderRadius: 11,
+              fontSize: 13.5, fontWeight: 600, color: "#fff", textDecoration: "none",
+              background: "var(--accent-grad)", boxShadow: "0 4px 16px rgba(99,102,241,0.28)",
+            }}
+          >
+            Open chat →
+          </Link>
         </div>
 
         <div style={{ marginTop: 22, paddingTop: 16, borderTop: "1px solid var(--border)", fontSize: 11.5, color: "var(--text-faint)" }}>
