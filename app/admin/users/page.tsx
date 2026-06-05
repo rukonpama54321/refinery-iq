@@ -13,7 +13,7 @@ const DEPARTMENTS = [
 ];
 
 interface AppUser {
-  id: string; email: string; display_name: string | null;
+  id: string; email: string; full_name: string | null;
   role: string; home_dept: string; is_active: boolean; created_at: string;
   user_department_access: { department: string }[];
 }
@@ -146,7 +146,7 @@ export default function UsersPage() {
                 return (
                   <tr key={u.id} style={{ borderTop: "1px solid var(--border)", opacity: u.is_active ? 1 : 0.5 }}>
                     <td style={{ padding: "12px 16px" }}>
-                      <div style={{ fontSize: 13, fontWeight: 500 }}>{u.display_name ?? u.email}</div>
+                      <div style={{ fontSize: 13, fontWeight: 500 }}>{u.full_name ?? u.email}</div>
                       <div style={{ fontSize: 11, color: "var(--text-dim)" }}>{u.email}</div>
                     </td>
                     <td style={{ padding: "12px 16px" }}>

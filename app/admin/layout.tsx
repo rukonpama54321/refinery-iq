@@ -17,8 +17,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   const { data: appUser } = await supabase
     .from("app_users")
-    .select("role, display_name, email")
+    .select("role, full_name, email")
     .eq("id", user.id)
+    .is("deleted_at", null)
     .single();
 
   if (!appUser || appUser.role !== "admin") redirect("/chat");
@@ -72,7 +73,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <div style={{ padding: "16px 20px", borderTop: "1px solid var(--border)" }}>
           <div style={{ fontSize: 12, color: "var(--text-dim)", lineHeight: 1.5 }}>
             <div style={{ fontWeight: 600, color: "var(--text)" }}>
-              {appUser.display_name ?? appUser.email}
+              {appUser.full_name ?? appUser.email}
             </div>
             <div style={{ fontSize: 11, marginTop: 2 }}>Administrator</div>
           </div>

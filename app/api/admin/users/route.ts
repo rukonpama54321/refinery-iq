@@ -29,7 +29,7 @@ export async function GET() {
   const { data, error } = await auth.supabase
     .from("app_users")
     .select(`
-      id, email, display_name, role, home_dept, is_active, created_at,
+      id, email, full_name, role, home_dept, is_active, created_at,
       user_department_access(department)
     `)
     .order("created_at", { ascending: false });
@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
 
   // Insert app_users row.
   await sb.from("app_users").upsert({
-    id: uid, email, display_name: display_name ?? email.split("@")[0],
+    id: uid, email, full_name: display_name ?? email.split("@")[0],
     role, home_dept: department, is_active: true,
   });
 
