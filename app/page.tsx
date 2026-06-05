@@ -1,14 +1,20 @@
-// Dev scaffold landing — proves the ported design system renders.
-// Replaced by the real login/chat once auth + RAG are wired.
+// Protected home.
+// - Before Supabase keys exist: renders the dev scaffold (so `npm run dev` works).
+// - Once configured: requireUser() gates access and greets the signed-in user.
+//   Replaced by the real dashboard/chat as those land.
+import { hasSupabaseEnv } from "@/lib/env";
+import { requireUser } from "@/lib/auth/user";
+import { DEPARTMENT_LABELS, ROLE_LABELS } from "@/lib/auth/rbac";
+import { SignOutButton } from "@/components/sign-out-button";
 
 const READY = [
-  "Next.js 15 App Router + TypeScript",
+  "Next.js 16 App Router + TypeScript",
   "Design system ported from UI/ prototype (tokens, glimmer, glass)",
   "Geist / Geist Mono fonts",
+  "Auth: Supabase magic-link + RBAC (3 tiers × 6 departments)",
   "Docker stack: Elasticsearch + Redis (infra/docker-compose.yml)",
 ];
 const NEXT = [
-  "Auth (Supabase + Resend magic-link)",
   "Chat UI + streaming (port from prototype)",
   "RAG over the HCU manual (Groq + Gemini, Elasticsearch)",
   "Admin / dashboard / versioning",
@@ -28,21 +34,37 @@ function Logo() {
   );
 }
 
-export default function Home() {
+export default async function Home() {
+  // Pre-keys: show the scaffold without gating.
+  const appUser = hasSupabaseEnv() ? await requireUser() : null;
+
   return (
     <main style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
       <div className="glass fade-rise" style={{ width: "100%", maxWidth: 620, padding: "30px 32px", borderRadius: "var(--r-xl)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 6 }}>
           <Logo />
-          <div>
+          <div style={{ flex: 1 }}>
             <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-0.02em" }}>RefineryIQ</div>
             <div style={{ fontSize: 13, color: "var(--text-dim)" }}>Northgate Refining · Operations Intelligence</div>
           </div>
+          {appUser && <SignOutButton />}
         </div>
 
-        <div className="shimmer-text" style={{ fontSize: 13.5, fontWeight: 600, margin: "16px 0 18px" }}>
-          Development scaffold — foundation is live.
-        </div>
+        {appUser ? (
+          <div className="fade-rise" style={{ margin: "16px 0 18px" }}>
+            <div style={{ fontSize: 14, color: "var(--text-dim)" }}>
+              Signed in as <span style={{ color: "var(--text)" }}>{appUser.fullName ?? appUser.email}</span>
+            </div>
+            <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+              <Chip label={ROLE_LABELS[appUser.role]} tint="var(--a3)" />
+              <Chip label={DEPARTMENT_LABELS[appUser.homeDept]} tint="var(--blue)" />
+            </div>
+          </div>
+        ) : (
+          <div className="shimmer-text" style={{ fontSize: 13.5, fontWeight: 600, margin: "16px 0 18px" }}>
+            Development scaffold — foundation is live. (Add Supabase keys to .env to enable sign-in.)
+          </div>
+        )}
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 22 }}>
           <Section title="Ready" items={READY} tint="var(--green)" />
@@ -54,6 +76,21 @@ export default function Home() {
         </div>
       </div>
     </main>
+  );
+}
+
+function Chip({ label, tint }: { label: string; tint: string }) {
+  return (
+    <span
+      style={{
+        display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600,
+        color: "var(--text-dim)", background: "var(--glass-2)", border: "1px solid var(--border)",
+        borderRadius: 99, padding: "4px 11px",
+      }}
+    >
+      <span style={{ width: 6, height: 6, borderRadius: 99, background: tint }} />
+      {label}
+    </span>
   );
 }
 
