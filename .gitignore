@@ -9,6 +9,10 @@ out/
 dist/
 build/
 
+# Next.js generated TypeScript shim (regenerated on build)
+next-env.d.ts
+*.tsbuildinfo
+
 # Environment & secrets
 .env
 .env.*

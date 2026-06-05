@@ -268,7 +268,7 @@ flowchart LR
 | Layer | Choice | Version (target) |
 |---|---|---|
 | Runtime | Node.js | 22 LTS |
-| App framework | Next.js (App Router) | 15.x |
+| App framework | Next.js (App Router) | 16.x (ADR-0005) |
 | LLM harness | Vercel AI SDK | latest |
 | Queue | BullMQ | latest |
 | Chat LLM | Groq (Llama 3.3 70B) · Gemini | — |

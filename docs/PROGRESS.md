@@ -1,6 +1,6 @@
 # Progress & Resume Notes
 
-> **Last session:** 2026-06-04 · **Next:** resume development of the Next.js app.
+> **Last session:** 2026-06-05 · **Next:** build Auth (Supabase + Resend magic-link).
 > Single place to pick up where we left off. (For the locked design, see the SDLC docs + ADRs.)
 
 ## Where we are
@@ -10,11 +10,11 @@ Planning is **complete and locked**; **development has just started** (Next.js s
 |---|---|
 | Brainstorm / PRD / Design / Architecture / Database | 🔒 Locked v1.1 (`docs/00`–`04`) |
 | LLM governance | ✅ drafted (`docs/llm-governance.md`) |
-| ADRs | 0001 (arch), 0002 (3 tiers/6 depts), 0003 (real-doc corpus), 0004 (Groq+Gemini, no Anthropic) |
-| App scaffold | ⏳ in progress (this session) |
+| ADRs | 0001 (arch), 0002 (3 tiers/6 depts), 0003 (real-doc corpus), 0004 (Groq+Gemini, no Anthropic), 0005 (Next 16) |
+| App scaffold | ✅ Next 16.2.7, `npm run build` passes |
 
 ## Key decisions (so they're not re-litigated)
-- **Stack:** Next.js 15 (App Router, TS) + Node worker · Vercel AI SDK · Supabase (Postgres/Auth/Storage) · Elasticsearch (hybrid BM25+vector) · Redis (cache/queue) · Docker · Cloudflare Tunnel.
+- **Stack:** Next.js 16 (App Router, TS; bumped from 15 per ADR-0005) + Node worker · Vercel AI SDK · Supabase (Postgres/Auth/Storage) · Elasticsearch (hybrid BM25+vector) · Redis (cache/queue) · Docker · Cloudflare Tunnel.
 - **LLMs (fully free, ADR-0004):** **Groq** `llama-3.3-70b-versatile` (primary chat) + **Gemini** (chat alt + `text-embedding-004` embeddings + OCR). **No local LLM, no Anthropic** (Claude Pro ≠ API access).
 - **RBAC:** 3 tiers (Admin/Manager/End User) × 6 departments (process_engineering, maintenance_reliability, hse, operations, lab_quality, hr).
 - **Corpus (ADR-0003):** real-document-first from `docs/policies/` (git-ignored, local-only): **HCU_Unit_Demo_Manual.pdf** (hydrocracker, demo-safe) + **NRL HR Policy Manual v1 & v2** (INTERNAL/confidential; v1→v2 = the version-control demo). Public artifacts use the generic name **"Northgate Refining"**; real NRL content stays local.
@@ -28,10 +28,10 @@ Planning is **complete and locked**; **development has just started** (Next.js s
 - `.env.example` updated to Groq + Gemini (Anthropic optional/commented)
 - `npm install` done (116 pkgs).
 
-## ⚠️ Open items to do FIRST next session
-1. **Bump Next.js** — `15.1.6` has a security CVE (CVE-2025-66478). Run `npm install next@latest`, then **verify the build**: `npm run build`. (Build was not yet verified this session.)
-2. Address `npm audit` (9 vulns, 1 critical — likely resolved by the Next bump).
-3. Create a local **`.env`** (copy `.env.example`) with real keys before any live wiring.
+## ⚠️ Open items
+1. ✅ **Next.js bumped** 15.1.6 → **16.2.7** (clears critical CVE-2025-66478); `npm run build` passes. ADR-0005.
+2. ⏳ **`npm audit`:** critical resolved; **9 moderate/low remain**, all transitive via the Vercel AI SDK (`@ai-sdk/*` → `ai`) + one `postcss` advisory inside Next. Fixing the AI-SDK ones needs `ai` v4 → v6 (breaking) — **decision: stay on v4 for now** (ADR-0004 unchanged), revisit before shipping. Don't run `npm audit fix --force` (it would downgrade Next / jump the AI SDK).
+3. ⏳ Create a local **`.env`** (copy `.env.example`) with real keys before any live wiring.
 
 ## Resume plan (build order)
 1. ✅ Foundation (done) → verify `npm run dev` renders the landing at http://localhost:3000.
