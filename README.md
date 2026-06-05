@@ -1,4 +1,4 @@
-# RefineryIQ
+# NumaligarhRefineryIQ
 
 > AI-first, role-aware enterprise assistant for an oil refinery — a single chat-led front door to operations, engineering documents, HR, safety/compliance, and analytics.
 

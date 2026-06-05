@@ -1,5 +1,5 @@
 // Demo content for the chat screen — believable refinery operations Q&A for
-// "Northgate Refining" (public-safe name). Used to seed the opening thread and
+// Numaligarh Refinery Ltd. Used to seed the opening thread and
 // to power the canned streaming fallback when GROQ_API_KEY is absent (pre-RAG).
 import type { Department } from "@/lib/auth/rbac";
 import type { CitationData } from "@/components/ui";

@@ -45,8 +45,8 @@ export default async function Home() {
         <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 6 }}>
           <Logo />
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-0.02em" }}>RefineryIQ</div>
-            <div style={{ fontSize: 13, color: "var(--text-dim)" }}>Northgate Refining · Operations Intelligence</div>
+            <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-0.02em" }}>NumaligarhRefineryIQ</div>
+            <div style={{ fontSize: 13, color: "var(--text-dim)" }}>Numaligarh Refinery Ltd. · Operations Intelligence</div>
           </div>
           {appUser && <SignOutButton />}
         </div>

@@ -28,8 +28,8 @@ export default function LoginPage() {
         <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 22 }}>
           <Logo />
           <div>
-            <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-0.02em" }}>RefineryIQ</div>
-            <div style={{ fontSize: 13, color: "var(--text-dim)" }}>Northgate Refining · Operations Intelligence</div>
+            <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-0.02em" }}>NumaligarhRefineryIQ</div>
+            <div style={{ fontSize: 13, color: "var(--text-dim)" }}>Numaligarh Refinery Ltd. · Operations Intelligence</div>
           </div>
         </div>
 
@@ -52,7 +52,7 @@ export default function LoginPage() {
               type="email"
               required
               autoComplete="email"
-              placeholder="you@northgate.example"
+              placeholder="you@nrl.co.in"
               className="input-glow"
               style={{
                 width: "100%", padding: "12px 14px", fontSize: 14, color: "var(--text)",

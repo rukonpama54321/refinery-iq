@@ -1,4 +1,4 @@
-name: refinery-iq
+name: numaligarh-refinery-iq
 
 # Local stack. Supabase is managed (cloud, free). No Ollama / local LLM (ADR-0004):
 # chat = Groq + Gemini APIs, embeddings + OCR = Gemini. The `worker` service is

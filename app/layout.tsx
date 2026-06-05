@@ -4,7 +4,7 @@ import { GeistMono } from "geist/font/mono";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "RefineryIQ — Northgate Refining",
+  title: "NumaligarhRefineryIQ — Numaligarh Refinery Ltd.",
   description: "AI-first, role-aware refinery operations intelligence (multi-agent RAG).",
 };
 

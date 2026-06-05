@@ -27,7 +27,7 @@ export default async function PendingPage() {
         <p style={{ fontSize: 14, color: "var(--text-dim)", lineHeight: 1.6 }}>
           You’re signed in as <span style={{ color: "var(--text)" }}>{authUser.email}</span>, but your
           account hasn’t been assigned a role and department yet. An administrator
-          needs to grant access before you can use RefineryIQ.
+          needs to grant access before you can use NumaligarhRefineryIQ.
         </p>
         <div style={{ marginTop: 22 }}>
           <SignOutButton />

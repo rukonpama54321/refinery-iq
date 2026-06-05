@@ -1,8 +1,8 @@
 {
-  "name": "refinery-iq",
+  "name": "numaligarh-refinery-iq",
   "version": "0.1.0",
   "private": true,
-  "description": "RefineryIQ — AI-first refinery assistant (multi-agent RAG demo)",
+  "description": "NumaligarhRefineryIQ — AI-first refinery assistant for Numaligarh Refinery Ltd. (multi-agent RAG demo)",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
