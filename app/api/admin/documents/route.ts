@@ -17,7 +17,7 @@ export async function GET() {
     .from("documents")
     .select(`
       id, title, department, sensitivity, created_at, current_version_id,
-      document_versions(id, version_no, status, byte_size, created_at, mime_type)
+      document_versions!document_versions_document_id_fkey(id, version_no, status, byte_size, created_at, mime_type)
     `)
     .order("created_at", { ascending: false });
 

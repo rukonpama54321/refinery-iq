@@ -5,9 +5,10 @@ import { useEffect, useState } from "react";
 interface AuditEvent {
   id: string;
   created_at: string;
-  event_type: string;
+  action: string;
   actor_id: string | null;
   target_id: string | null;
+  target_type: string | null;
   metadata: Record<string, unknown> | null;
 }
 
@@ -39,7 +40,7 @@ export default function AuditPage() {
 
   const filtered = filter
     ? events.filter((e) =>
-        e.event_type.includes(filter) ||
+        e.action.includes(filter) ||
         JSON.stringify(e.metadata ?? {}).toLowerCase().includes(filter.toLowerCase())
       )
     : events;
@@ -72,11 +73,11 @@ export default function AuditPage() {
             {filtered.map((ev) => (
               <div key={ev.id} style={{ padding: "12px 20px", borderBottom: "1px solid var(--border)", display: "flex", gap: 14, alignItems: "flex-start" }}>
                 <span style={{ fontSize: 18, flexShrink: 0, marginTop: 1 }}>
-                  {EVENT_ICONS[ev.event_type] ?? EVENT_ICONS.default}
+                  {EVENT_ICONS[ev.action] ?? EVENT_ICONS.default}
                 </span>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-                    <span style={{ fontSize: 13, fontWeight: 600 }}>{ev.event_type}</span>
+                    <span style={{ fontSize: 13, fontWeight: 600 }}>{ev.action}</span>
                     <span style={{ fontSize: 11, color: "var(--text-dim)" }}>
                       {new Date(ev.created_at).toLocaleString()}
                     </span>

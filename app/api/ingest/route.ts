@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
   // Fetch version + document details.
   const { data: ver, error } = await supabase
     .from("document_versions")
-    .select("id, document_id, version_no, storage_path, mime_type, documents(id, title, department, sensitivity, current_version_id)")
+    .select("id, document_id, version_no, storage_path, mime_type, documents!document_versions_document_id_fkey(id, title, department, sensitivity, current_version_id)")
     .eq("id", versionId)
     .single();
   if (error || !ver) return NextResponse.json({ error: "Version not found" }, { status: 404 });
