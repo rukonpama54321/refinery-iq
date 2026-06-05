@@ -64,6 +64,13 @@ export default async function ChatPage() {
 
         <div style={{ flex: 1 }} />
 
+        {appUser?.role === "admin" && (
+          <Link href="/admin" title="Admin panel" style={{
+            width: 34, height: 34, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 16, textDecoration: "none", background: "var(--glass-2)", border: "1px solid var(--border-2)",
+          }}>⚙️</Link>
+        )}
+
         <Link href="/" title={`${account.name} · ${account.role} — account & sign out on Home`} style={{
           width: 34, height: 34, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
           fontSize: 13, fontWeight: 600, color: "#fff", textDecoration: "none",
